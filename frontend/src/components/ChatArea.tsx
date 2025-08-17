@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Send, ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, PanelRightClose, ArrowDown } from 'lucide-react'
+import { Send, ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, PanelRightClose, ArrowDown, Edit3, Check, X } from 'lucide-react'
 import { useTypewriter } from '../hooks/useTypewriter'
 import TypingIndicator from './TypingIndicator'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -29,12 +29,30 @@ interface ChatAreaProps {
   onNewConversation: (conversationId: string) => void
 }
 
-function MessageBubble({ message, isTyping = false }: { message: Message; isTyping?: boolean }) {
+function MessageBubble({ 
+  message, 
+  isTyping = false, 
+  isEditing = false,
+  editingContent = '',
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+  onEditContentChange
+}: { 
+  message: Message; 
+  isTyping?: boolean;
+  isEditing?: boolean;
+  editingContent?: string;
+  onStartEdit?: () => void;
+  onSaveEdit?: () => void;
+  onCancelEdit?: () => void;
+  onEditContentChange?: (content: string) => void;
+}) {
   const { displayText } = useTypewriter(isTyping ? message.content : '', 6)
   const content = isTyping ? displayText : message.content
 
   return (
-    <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+    <div className={`group flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
       <div className={`flex gap-2 max-w-3xl ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
         <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
           message.role === 'user' 
@@ -44,13 +62,57 @@ function MessageBubble({ message, isTyping = false }: { message: Message; isTypi
           {message.role === 'user' ? <User size={16} /> : <Bot size={16} />}
         </div>
         
-        <div className={`rounded-xl px-4 py-3 shadow-sm ${
+        <div className={`relative rounded-xl px-4 py-3 shadow-sm ${
           message.role === 'user'
             ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
             : 'bg-white/80 dark:bg-dark-700/80 text-gray-900 dark:text-white border border-gray-200/60 dark:border-dark-600/60 backdrop-blur-sm'
         }`}>
+          {/* Botão de editar (apenas para mensagens do usuário) */}
+          {message.role === 'user' && !isEditing && onStartEdit && (
+            <button
+              onClick={onStartEdit}
+              className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-lg shadow-md hover:shadow-lg hover:scale-105"
+              title="Editar mensagem"
+            >
+              <Edit3 size={12} className="text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+
           <div className="text-sm leading-relaxed">
-            {message.role === 'assistant' ? (
+            {isEditing ? (
+              <div className="space-y-3">
+                <textarea
+                  value={editingContent}
+                  onChange={(e) => onEditContentChange?.(e.target.value)}
+                  className="w-full px-3 py-2 bg-white/90 dark:bg-dark-800/90 text-gray-900 dark:text-white border border-gray-200 dark:border-dark-600 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                  rows={Math.max(2, editingContent.split('\n').length)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.ctrlKey) {
+                      onSaveEdit?.()
+                    } else if (e.key === 'Escape') {
+                      onCancelEdit?.()
+                    }
+                  }}
+                  autoFocus
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={onCancelEdit}
+                    className="px-3 py-1.5 text-xs bg-gray-200 dark:bg-dark-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-dark-500 transition-colors flex items-center gap-1"
+                  >
+                    <X size={12} />
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={onSaveEdit}
+                    className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
+                  >
+                    <Check size={12} />
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            ) : message.role === 'assistant' ? (
               <div>
                 <MarkdownRenderer content={content} />
                 {isTyping && displayText.length < message.content.length && (
@@ -63,14 +125,17 @@ function MessageBubble({ message, isTyping = false }: { message: Message; isTypi
               </div>
             )}
           </div>
-          <div className={`text-xs mt-1.5 opacity-60 ${
-            message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
-          }`}>
-            {new Date(message.timestamp).toLocaleTimeString('pt-BR', { 
-              hour: '2-digit', 
-              minute: '2-digit' 
-            })}
-          </div>
+          
+          {!isEditing && (
+            <div className={`text-xs mt-1.5 opacity-60 ${
+              message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
+            }`}>
+              {new Date(message.timestamp).toLocaleTimeString('pt-BR', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+              })}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -93,6 +158,8 @@ export default function ChatArea({
   const [streamingMessage, setStreamingMessage] = useState<Message | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editingContent, setEditingContent] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -131,30 +198,26 @@ export default function ChatArea({
     }, 100) // Throttle de 100ms
   }
 
-  // Observa mudanças no conteúdo e força scroll quando necessário
+  // Scroll contínuo durante streaming - SEMPRE quando está digitando
   useEffect(() => {
-    if (shouldAutoScroll && (isStreaming || loading)) {
-      // Usar requestAnimationFrame para sincronizar com o DOM
+    if (isStreaming && streamingMessage) {
+      // Durante streaming, sempre faz scroll independente de shouldAutoScroll
       const frameId = requestAnimationFrame(() => {
-        scrollToBottom()
-      })
-      
-      return () => cancelAnimationFrame(frameId)
-    }
-  }, [streamingMessage, isStreaming, loading, shouldAutoScroll])
-
-  // Observa mudanças específicas no conteúdo do typewriter
-  useEffect(() => {
-    if (shouldAutoScroll && streamingMessage && isStreaming) {
-      const frameId = requestAnimationFrame(() => {
-        requestAnimationFrame(() => { // Double RAF para garantir renderização
-          scrollToBottom(true) // Scroll imediato durante typewriter
+        requestAnimationFrame(() => {
+          scrollToBottom(true) // Scroll imediato e contínuo
         })
       })
       
       return () => cancelAnimationFrame(frameId)
     }
-  }, [streamingMessage?.content, shouldAutoScroll, isStreaming])
+  }, [streamingMessage?.content, isStreaming])
+
+  // Scroll normal para outras mudanças (mensagens completas, loading)
+  useEffect(() => {
+    if (shouldAutoScroll && !isStreaming) {
+      scrollToBottom()
+    }
+  }, [messages, shouldAutoScroll])
 
   const fetchModels = async () => {
     try {
@@ -233,6 +296,7 @@ export default function ChatArea({
           
           setStreamingMessage(assistantMessage)
           setIsStreaming(true)
+          setShouldAutoScroll(true) // Garante auto-scroll durante streaming
           streamTimeoutRef.current = setTimeout(() => {
             setStreamingMessage(null)
             setIsStreaming(false)
@@ -309,6 +373,7 @@ export default function ChatArea({
           
           setStreamingMessage(assistantMessage)
           setIsStreaming(true)
+          setShouldAutoScroll(true) // Garante auto-scroll durante streaming
           streamTimeoutRef.current = setTimeout(() => {
             setStreamingMessage(null)
             setIsStreaming(false)
@@ -344,6 +409,76 @@ export default function ChatArea({
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       sendMessage()
+    }
+  }
+
+  const startEditingMessage = (message: Message) => {
+    setEditingMessageId(message.id)
+    setEditingContent(message.content)
+  }
+
+  const cancelEditing = () => {
+    setEditingMessageId(null)
+    setEditingContent('')
+  }
+
+  const saveEditedMessage = async (messageId: string) => {
+    if (!editingContent.trim() || !conversationId) return
+
+    try {
+      // Encontra o índice da mensagem editada
+      const messageIndex = messages.findIndex(msg => msg.id === messageId)
+      if (messageIndex === -1) return
+
+      // Remove todas as mensagens após a editada (incluindo respostas do assistente)
+      const newMessages = messages.slice(0, messageIndex)
+      
+      // Atualiza a mensagem editada
+      const editedMessage = {
+        ...messages[messageIndex],
+        content: editingContent.trim(),
+        timestamp: new Date().toISOString()
+      }
+      
+      // Atualiza o estado local
+      setMessages([...newMessages, editedMessage])
+      setEditingMessageId(null)
+      setEditingContent('')
+      setLoading(true)
+      setShouldAutoScroll(true)
+
+      // Reenvia a mensagem editada para a API
+      const response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          content: editingContent.trim(),
+          model: selectedModel 
+        })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        const assistantMessage: Message = {
+          id: `assistant-${Date.now()}`,
+          role: 'assistant',
+          content: data.assistant_response,
+          timestamp: new Date().toISOString()
+        }
+        
+        setStreamingMessage(assistantMessage)
+        setIsStreaming(true)
+        setShouldAutoScroll(true)
+        streamTimeoutRef.current = setTimeout(() => {
+          setStreamingMessage(null)
+          setIsStreaming(false)
+          setMessages(prev => [...prev, assistantMessage])
+        }, data.assistant_response.length * 6 + 500)
+      }
+    } catch (error) {
+      console.error('Error editing message:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -419,7 +554,7 @@ export default function ChatArea({
       <div 
         ref={messagesContainerRef}
         className="flex-1 overflow-y-auto"
-        onScroll={checkScrollPosition}
+        onScroll={isStreaming ? undefined : checkScrollPosition}
       >
         {messages.length === 0 && !streamingMessage ? (
           <div className="flex-1 flex items-center justify-center p-8">
@@ -441,7 +576,16 @@ export default function ChatArea({
         ) : (
           <div className="px-4 py-2 space-y-4">
             {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
+              <MessageBubble 
+                key={message.id} 
+                message={message}
+                isEditing={editingMessageId === message.id}
+                editingContent={editingContent}
+                onStartEdit={() => startEditingMessage(message)}
+                onSaveEdit={() => saveEditedMessage(message.id)}
+                onCancelEdit={cancelEditing}
+                onEditContentChange={setEditingContent}
+              />
             ))}
             
             {loading && !streamingMessage && (
@@ -465,8 +609,8 @@ export default function ChatArea({
           </div>
         )}
         
-        {/* Botão para voltar ao final quando não está em auto-scroll */}
-        {!shouldAutoScroll && (messages.length > 0 || streamingMessage) && (
+        {/* Botão para voltar ao final quando não está em auto-scroll e não está streaming */}
+        {!shouldAutoScroll && !isStreaming && (messages.length > 0 || streamingMessage) && (
           <div className="absolute bottom-20 right-6 z-10">
             <button
               onClick={forceScrollToBottom}
