@@ -1,0 +1,530 @@
+import { useState, useEffect, useRef } from 'react'
+import { Send, ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, PanelRightClose, ArrowDown } from 'lucide-react'
+import { useTypewriter } from '../hooks/useTypewriter'
+import TypingIndicator from './TypingIndicator'
+import MarkdownRenderer from './MarkdownRenderer'
+
+interface Message {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+}
+
+interface Model {
+  id: string
+  name: string
+  description: string
+  badge?: string
+  enabled: boolean
+  default: boolean
+}
+
+interface ChatAreaProps {
+  conversationId: string | null
+  selectedModel: string
+  onModelChange: (model: string) => void
+  sidebarOpen: boolean
+  onToggleSidebar: () => void
+  onNewConversation: (conversationId: string) => void
+}
+
+function MessageBubble({ message, isTyping = false }: { message: Message; isTyping?: boolean }) {
+  const { displayText } = useTypewriter(isTyping ? message.content : '', 6)
+  const content = isTyping ? displayText : message.content
+
+  return (
+    <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-slide-up`}>
+      <div className={`flex gap-2 max-w-3xl ${message.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+        <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center ${
+          message.role === 'user' 
+            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white' 
+            : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600 text-gray-700 dark:text-gray-300'
+        }`}>
+          {message.role === 'user' ? <User size={16} /> : <Bot size={16} />}
+        </div>
+        
+        <div className={`rounded-xl px-4 py-3 shadow-sm ${
+          message.role === 'user'
+            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
+            : 'bg-white/80 dark:bg-dark-700/80 text-gray-900 dark:text-white border border-gray-200/60 dark:border-dark-600/60 backdrop-blur-sm'
+        }`}>
+          <div className="text-sm leading-relaxed">
+            {message.role === 'assistant' ? (
+              <div>
+                <MarkdownRenderer content={content} />
+                {isTyping && displayText.length < message.content.length && (
+                  <span className="inline-block w-1.5 h-4 bg-current ml-1 animate-pulse" />
+                )}
+              </div>
+            ) : (
+              <div className="whitespace-pre-wrap">
+                {content}
+              </div>
+            )}
+          </div>
+          <div className={`text-xs mt-1.5 opacity-60 ${
+            message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
+          }`}>
+            {new Date(message.timestamp).toLocaleTimeString('pt-BR', { 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function ChatArea({ 
+  conversationId, 
+  selectedModel, 
+  onModelChange, 
+  sidebarOpen, 
+  onToggleSidebar,
+  onNewConversation 
+}: ChatAreaProps) {
+  const [messages, setMessages] = useState<Message[]>([])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [models, setModels] = useState<Model[]>([])
+  const [showModelSelector, setShowModelSelector] = useState(false)
+  const [streamingMessage, setStreamingMessage] = useState<Message | null>(null)
+  const [isStreaming, setIsStreaming] = useState(false)
+  const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+  const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    fetchModels()
+  }, [])
+
+  useEffect(() => {
+    if (conversationId) {
+      fetchMessages()
+    } else {
+      setMessages([])
+    }
+  }, [conversationId])
+
+  useEffect(() => {
+    if (shouldAutoScroll) {
+      scrollToBottom()
+    }
+  }, [messages, streamingMessage, shouldAutoScroll])
+
+  // Detecta se o usuário está no final da página (throttled)
+  const checkScrollPosition = () => {
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+    }
+    
+    scrollTimeoutRef.current = setTimeout(() => {
+      if (messagesContainerRef.current) {
+        const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current
+        const isAtBottom = scrollHeight - scrollTop - clientHeight < 50 // Tolerância reduzida para 50px
+        setShouldAutoScroll(isAtBottom)
+      }
+    }, 100) // Throttle de 100ms
+  }
+
+  // Observa mudanças no conteúdo e força scroll quando necessário
+  useEffect(() => {
+    if (shouldAutoScroll && (isStreaming || loading)) {
+      // Usar requestAnimationFrame para sincronizar com o DOM
+      const frameId = requestAnimationFrame(() => {
+        scrollToBottom()
+      })
+      
+      return () => cancelAnimationFrame(frameId)
+    }
+  }, [streamingMessage, isStreaming, loading, shouldAutoScroll])
+
+  // Observa mudanças específicas no conteúdo do typewriter
+  useEffect(() => {
+    if (shouldAutoScroll && streamingMessage && isStreaming) {
+      const frameId = requestAnimationFrame(() => {
+        requestAnimationFrame(() => { // Double RAF para garantir renderização
+          scrollToBottom(true) // Scroll imediato durante typewriter
+        })
+      })
+      
+      return () => cancelAnimationFrame(frameId)
+    }
+  }, [streamingMessage?.content, shouldAutoScroll, isStreaming])
+
+  const fetchModels = async () => {
+    try {
+      const response = await fetch('http://localhost:3000/api/models')
+      const data = await response.json()
+      setModels(data.models)
+    } catch (error) {
+      console.error('Error fetching models:', error)
+    }
+  }
+
+  const fetchMessages = async () => {
+    if (!conversationId) return
+    
+    try {
+      const response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`)
+      const data = await response.json()
+      setMessages(data)
+    } catch (error) {
+      console.error('Error fetching messages:', error)
+    }
+  }
+
+  const scrollToBottom = (immediate = false) => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ 
+        behavior: immediate ? 'instant' : 'smooth' 
+      })
+    }
+  }
+
+  // Força scroll para o final e reativa auto-scroll
+  const forceScrollToBottom = () => {
+    setShouldAutoScroll(true)
+    scrollToBottom()
+  }
+
+  const sendMessage = async () => {
+    if (!input.trim()) return
+
+    const messageContent = input.trim()
+    setInput('')
+    setLoading(true)
+    
+    // Garante que vai fazer scroll para ver a nova mensagem
+    setShouldAutoScroll(true)
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: messageContent,
+      timestamp: new Date().toISOString()
+    }
+
+    try {
+      if (conversationId) {
+        setMessages(prev => [...prev, userMessage])
+        
+        const response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content: messageContent,
+            model: selectedModel 
+          })
+        })
+
+        if (response.ok) {
+          const data = await response.json()
+          const assistantMessage: Message = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: data.assistant_response,
+            timestamp: new Date().toISOString()
+          }
+          
+          setStreamingMessage(assistantMessage)
+          setIsStreaming(true)
+          streamTimeoutRef.current = setTimeout(() => {
+            setStreamingMessage(null)
+            setIsStreaming(false)
+            setMessages(prev => [...prev, assistantMessage])
+          }, data.assistant_response.length * 6 + 500)
+        }
+      } else {
+        // Para chat sem contexto, primeiro cria uma conversa automaticamente
+        try {
+          const createResponse = await fetch('http://localhost:3000/api/conversations', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: messageContent.substring(0, 50) + (messageContent.length > 50 ? '...' : '') })
+          })
+          
+          if (createResponse.ok) {
+            const newConv = await createResponse.json()
+            // Atualiza o estado para usar a nova conversa
+            onNewConversation(newConv.id)
+            
+            // Envia a mensagem para a nova conversa
+            setMessages([userMessage])
+            
+            const response = await fetch(`http://localhost:3000/api/conversations/${newConv.id}/messages`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                content: messageContent,
+                model: selectedModel 
+              })
+            })
+
+            if (response.ok) {
+              const data = await response.json()
+              const assistantMessage: Message = {
+                id: `assistant-${Date.now()}`,
+                role: 'assistant',
+                content: data.assistant_response,
+                timestamp: new Date().toISOString()
+              }
+              
+              setStreamingMessage(assistantMessage)
+              setIsStreaming(true)
+              streamTimeoutRef.current = setTimeout(() => {
+                setStreamingMessage(null)
+                setIsStreaming(false)
+                setMessages(prev => [...prev, assistantMessage])
+                // Força atualização da sidebar
+                window.dispatchEvent(new CustomEvent('conversation-created', { detail: newConv }))
+              }, data.assistant_response.length * 6 + 500)
+            }
+          }
+        } catch (convError) {
+          console.error('Error creating conversation:', convError)
+          // Fallback para chat simples
+          setMessages([userMessage])
+          
+          const response = await fetch('http://localhost:3000/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              message: messageContent,
+              model: selectedModel 
+            })
+          })
+
+          const data = await response.json()
+          const assistantMessage: Message = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date().toISOString()
+          }
+          
+          setStreamingMessage(assistantMessage)
+          setIsStreaming(true)
+          streamTimeoutRef.current = setTimeout(() => {
+            setStreamingMessage(null)
+            setIsStreaming(false)
+            setMessages(prev => [...prev, assistantMessage])
+          }, data.response.length * 6 + 500)
+        }
+      }
+    } catch (error) {
+      console.error('Error sending message:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const stopStreaming = () => {
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current)
+      scrollTimeoutRef.current = null
+    }
+    if (streamingMessage) {
+      setMessages(prev => [...prev, streamingMessage])
+    }
+    setStreamingMessage(null)
+    setIsStreaming(false)
+    setLoading(false)
+  }
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      sendMessage()
+    }
+  }
+
+  const selectedModelData = models.find(m => m.id === selectedModel)
+
+  return (
+    <div className="flex flex-col flex-1 h-full bg-gray-50 dark:bg-dark-900 relative">
+      <div className="p-4 bg-gray-50 dark:bg-dark-900">
+        <div className="flex items-center gap-3">
+          {/* Botão toggle sidebar - ao lado do seletor quando fechada */}
+          {!sidebarOpen && (
+            <button
+              onClick={onToggleSidebar}
+              className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-dark-800/60 transition-colors"
+              title="Abrir sidebar"
+            >
+              <PanelRightOpen size={18} className="text-gray-600 dark:text-gray-300" />
+            </button>
+          )}
+          
+          {/* Seletor de modelo */}
+          <div className="relative">
+            <button
+              onClick={() => setShowModelSelector(!showModelSelector)}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200/60 dark:border-dark-600/60 hover:bg-white/60 dark:hover:bg-dark-800/60 transition-all duration-200 bg-white/40 dark:bg-dark-800/40 backdrop-blur-sm"
+            >
+              <Sparkles size={16} className="text-primary-600 dark:text-primary-400" />
+              <div className="text-left">
+                <div className="text-xs font-medium text-gray-900 dark:text-white">
+                  {selectedModelData?.name || selectedModel}
+                </div>
+              </div>
+              {selectedModelData?.badge && (
+                <span className="text-xs px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-md font-medium">
+                  {selectedModelData.badge}
+                </span>
+              )}
+              <ChevronDown size={14} className="text-gray-600 dark:text-gray-300" />
+            </button>
+
+            {showModelSelector && (
+              <div className="absolute top-full left-0 mt-1 w-72 bg-white/95 dark:bg-dark-800/95 backdrop-blur-xl border border-gray-200/60 dark:border-dark-600/60 rounded-xl shadow-xl z-30 overflow-hidden">
+                {models.map((model) => (
+                  <button
+                    key={model.id}
+                    onClick={() => {
+                      onModelChange(model.id)
+                      setShowModelSelector(false)
+                    }}
+                    className={`w-full text-left p-3 hover:bg-gray-50/80 dark:hover:bg-dark-700/80 transition-colors border-b border-gray-100/50 dark:border-dark-700/50 last:border-b-0 ${
+                      selectedModel === model.id ? 'bg-primary-50/80 dark:bg-primary-900/20' : ''
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium text-sm text-gray-900 dark:text-white">{model.name}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{model.description}</div>
+                      </div>
+                      {model.badge && (
+                        <span className="text-xs px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-md font-medium">
+                          {model.badge}
+                        </span>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div 
+        ref={messagesContainerRef}
+        className="flex-1 overflow-y-auto"
+        onScroll={checkScrollPosition}
+      >
+        {messages.length === 0 && !streamingMessage ? (
+          <div className="flex-1 flex items-center justify-center p-8">
+            <div className="text-center max-w-md">
+              <div className="w-16 h-16 bg-gradient-to-br from-primary-500 to-primary-600 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                <Sparkles size={32} className="text-white" />
+              </div>
+              <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+                Como posso ajudar hoje?
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                {conversationId 
+                  ? 'Continue nossa conversa digitando uma mensagem abaixo.'
+                  : 'Comece uma nova conversa fazendo uma pergunta ou enviando uma mensagem.'
+                }
+              </p>
+            </div>
+          </div>
+        ) : (
+          <div className="px-4 py-2 space-y-4">
+            {messages.map((message) => (
+              <MessageBubble key={message.id} message={message} />
+            ))}
+            
+            {loading && !streamingMessage && (
+              <div className="flex justify-start">
+                <div className="flex gap-3 max-w-4xl">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600 flex items-center justify-center">
+                    <Bot size={16} className="text-gray-700 dark:text-gray-300" />
+                  </div>
+                  <div className="rounded-xl px-4 py-3 bg-white/80 dark:bg-dark-700/80 backdrop-blur-sm border border-gray-200/60 dark:border-dark-600/60 shadow-sm">
+                    <TypingIndicator />
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {streamingMessage && (
+              <MessageBubble message={streamingMessage} isTyping={true} />
+            )}
+            
+            <div ref={messagesEndRef} />
+          </div>
+        )}
+        
+        {/* Botão para voltar ao final quando não está em auto-scroll */}
+        {!shouldAutoScroll && (messages.length > 0 || streamingMessage) && (
+          <div className="absolute bottom-20 right-6 z-10">
+            <button
+              onClick={forceScrollToBottom}
+              className="p-3 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
+              title="Ir para o final"
+            >
+              <ArrowDown size={20} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      <div className="relative">
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-gray-50 via-gray-50/60 to-transparent dark:from-dark-900 dark:via-dark-900/60 dark:to-transparent pointer-events-none"></div>
+        <div className="relative z-10 p-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="relative bg-white/90 dark:bg-dark-800/90 backdrop-blur-xl rounded-2xl border border-gray-200/40 dark:border-dark-600/40 shadow-2xl shadow-black/10 dark:shadow-black/30">
+              <div className="flex items-end gap-2 p-3">
+                <div className="flex-1 relative">
+                  <textarea
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={handleKeyPress}
+                    placeholder="Digite sua mensagem..."
+                    className="w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:outline-none text-sm leading-relaxed max-h-28 min-h-[44px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-dark-600"
+                    rows={1}
+                    onInput={(e) => {
+                      const target = e.target as HTMLTextAreaElement
+                      target.style.height = 'auto'
+                      target.style.height = Math.min(target.scrollHeight, 112) + 'px'
+                    }}
+                  />
+                </div>
+                
+                {isStreaming || (loading && !streamingMessage) ? (
+                  <button
+                    onClick={stopStreaming}
+                    className="flex-shrink-0 w-11 h-11 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center group"
+                    title="Parar geração"
+                  >
+                    <Square size={15} fill="currentColor" className="group-hover:scale-110 transition-transform" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={sendMessage}
+                    disabled={!input.trim()}
+                    className="flex-shrink-0 w-11 h-11 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-dark-600 dark:disabled:to-dark-700 text-white disabled:text-gray-500 dark:disabled:text-gray-400 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:shadow-md flex items-center justify-center group disabled:cursor-not-allowed"
+                    title="Enviar mensagem"
+                  >
+                    <PlaneTakeoff size={15} className="group-hover:scale-110 group-disabled:scale-100 transition-transform" />
+                  </button>
+                )}
+              </div>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
