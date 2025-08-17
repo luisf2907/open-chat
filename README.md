@@ -215,11 +215,11 @@ npm run install:all
 
 ## 📄 Licença
 
-Este projeto está sob a licença ISC. Veja o arquivo `LICENSE` para detalhes.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
 
 ## 👥 Autor
 
-**Luis Fernando Werneck** - [@luisf2907](https://github.com/luisf2907)
+**Luis Felipe Werneck** - [@luisf2907](https://github.com/luisf2907)
 
 ---
 
