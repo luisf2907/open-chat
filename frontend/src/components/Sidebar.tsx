@@ -50,19 +50,9 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
     }
   }
 
-  const createNewConversation = async () => {
-    try {
-      const response = await fetch('http://localhost:3000/api/conversations', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'Nova Conversa' })
-      })
-      const newConversation = await response.json()
-      setConversations(prev => [newConversation, ...prev])
-      onSelectConversation(newConversation.id)
-    } catch (error) {
-      console.error('Error creating conversation:', error)
-    }
+  const createNewConversation = () => {
+    // Apenas limpa o chat atual (não cria conversa no backend ainda)
+    onSelectConversation(null)
   }
 
   const deleteConversation = async (id: string, e: React.MouseEvent) => {
