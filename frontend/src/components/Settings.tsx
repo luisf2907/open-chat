@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3 } from 'lucide-react'
+import { useToast } from '../contexts/ToastContext'
 
 interface Model {
   id: string
@@ -36,6 +37,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     default: false
   })
   const [showAddForm, setShowAddForm] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (isOpen) {
@@ -63,10 +65,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(models)
       })
-      alert('Modelos salvos com sucesso!')
+      showToast('Modelos salvos com sucesso!', 'success')
+      // Fecha o modal imediatamente após salvar
+      onClose()
     } catch (error) {
       console.error('Error saving models:', error)
-      alert('Erro ao salvar modelos')
+      showToast('Erro ao salvar modelos', 'error')
     } finally {
       setSaving(false)
     }
