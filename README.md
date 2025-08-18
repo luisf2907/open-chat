@@ -50,7 +50,7 @@ cd open-chat
 ### 2. Instale as dependências
 ```bash
 # Instala dependências do backend e frontend
-npm run install:all
+npm run install:deps
 ```
 
 ### 3. Configure as variáveis de ambiente
@@ -85,10 +85,12 @@ npm run dev
 
 ### Na pasta raiz:
 ```bash
-npm run dev         # Roda backend + frontend juntos
-npm run backend     # Roda apenas o backend
-npm run frontend    # Roda apenas o frontend  
-npm run install:all # Instala dependências de ambos
+npm run dev          # Roda backend + frontend juntos
+npm run start        # Roda em produção (backend + frontend preview)
+npm run backend      # Roda apenas o backend
+npm run frontend     # Roda apenas o frontend  
+npm run build        # Build do frontend para produção
+npm run install:deps # Instala dependências de ambos
 ```
 
 ### Na pasta frontend:
@@ -97,7 +99,6 @@ npm run dev        # Roda apenas o frontend
 npm run build      # Build para produção
 npm run preview    # Preview do build
 npm run lint       # Executa linting
-npm run dev:full   # Roda backend + frontend
 ```
 
 ### Na pasta backend:
@@ -150,21 +151,22 @@ open-chat/
 ├── package.json              # Scripts principais e concurrently
 ├── .env                      # Variáveis de ambiente (criar)
 ├── backend/
+│   ├── package.json         # Dependências do backend
 │   ├── server.js            # Servidor Express
 │   ├── routes.js            # Rotas da API
 │   ├── database.js          # Configuração SQLite
 │   ├── gemini.js            # Integração Gemini AI
 │   ├── models.json          # Configuração dos modelos
-│   ├── package.json
 │   └── chat.db              # Banco SQLite (criado automaticamente)
 └── frontend/
+    ├── package.json         # Dependências do frontend
     ├── src/
     │   ├── components/      # Componentes React
     │   ├── contexts/        # Context API (Temas)
     │   ├── hooks/          # Custom hooks
     │   └── ...
-    ├── package.json
-    └── dist/               # Build de produção
+    ├── dist/               # Build de produção
+    └── ...
 ```
 
 ## 🔧 Configuração Avançada
@@ -247,8 +249,9 @@ FRONTEND_URL=http://localhost:5173  # URL do frontend (opcional)
 ```bash
 # Limpa cache e reinstala
 rm -rf node_modules package-lock.json
+rm -rf backend/node_modules backend/package-lock.json
 rm -rf frontend/node_modules frontend/package-lock.json
-npm run install:all
+npm run install:deps
 ```
 
 ### Problemas com Geração de Imagens

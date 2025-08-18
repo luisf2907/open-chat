@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Send, ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, PanelRightClose, ArrowDown, Edit3, Check, X, Image, FileText } from 'lucide-react'
+import { ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, ArrowDown, Edit3, Check, X, Image, FileText, RotateCcw } from 'lucide-react'
 import { useTypewriter } from '../hooks/useTypewriter'
 import TypingIndicator from './TypingIndicator'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -12,6 +12,12 @@ interface Message {
   imageUrl?: string
   imageData?: string
   type?: 'text' | 'image'
+  error?: boolean
+  retryData?: {
+    content: string
+    model: string
+    type: 'text' | 'image'
+  }
 }
 
 interface Model {
@@ -46,7 +52,8 @@ function MessageBubble({
   onStartEdit,
   onSaveEdit,
   onCancelEdit,
-  onEditContentChange
+  onEditContentChange,
+  onRetry
 }: { 
   message: Message; 
   isTyping?: boolean;
@@ -56,6 +63,7 @@ function MessageBubble({
   onSaveEdit?: () => void;
   onCancelEdit?: () => void;
   onEditContentChange?: (content: string) => void;
+  onRetry?: (retryData: NonNullable<Message['retryData']>) => void;
 }) {
   const { displayText } = useTypewriter(isTyping ? message.content : '', 6)
   const content = isTyping ? displayText : message.content
@@ -72,9 +80,11 @@ function MessageBubble({
         </div>
         
         <div className={`relative rounded-xl px-4 py-3 shadow-sm ${
-          message.role === 'user'
-            ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
-            : 'bg-white/80 dark:bg-dark-700/80 text-gray-900 dark:text-white border border-gray-200/60 dark:border-dark-600/60 backdrop-blur-sm'
+          message.error
+            ? 'bg-red-50/90 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200/60 dark:border-red-800/60'
+            : message.role === 'user'
+              ? 'bg-gradient-to-br from-primary-500 to-primary-600 text-white'
+              : 'bg-white/80 dark:bg-dark-700/80 text-gray-900 dark:text-white border border-gray-200/60 dark:border-dark-600/60 backdrop-blur-sm'
         }`}>
           {/* Botão de editar (apenas para mensagens do usuário) */}
           {message.role === 'user' && !isEditing && onStartEdit && (
@@ -121,6 +131,23 @@ function MessageBubble({
                   </button>
                 </div>
               </div>
+            ) : message.error ? (
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <div className="font-medium">Não foi possível gerar a resposta.</div>
+                  <div className="opacity-80 text-xs">Você pode tentar novamente.</div>
+                </div>
+                {message.retryData && onRetry && (
+                  <button
+                    onClick={() => onRetry(message.retryData!)}
+                    className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-200 transition-colors"
+                    title="Tentar novamente"
+                  >
+                    <RotateCcw size={14} />
+                    Retry
+                  </button>
+                )}
+              </div>
             ) : message.type === 'image' && (message.imageData || message.imageUrl) ? (
               <div className="space-y-2">
                 <img 
@@ -150,7 +177,9 @@ function MessageBubble({
           
           {!isEditing && (
             <div className={`text-xs mt-1.5 opacity-60 ${
-              message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
+              message.error
+                ? 'text-red-600 dark:text-red-300'
+                : message.role === 'user' ? 'text-primary-100' : 'text-gray-500 dark:text-gray-400'
             }`}>
               {new Date(message.timestamp).toLocaleTimeString('pt-BR', { 
                 hour: '2-digit', 
@@ -186,10 +215,13 @@ export default function ChatArea({
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
   const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
   const [editingContent, setEditingContent] = useState('')
+  const [retryTargetId, setRetryTargetId] = useState<string | null>(null)
+  const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
-  const streamTimeoutRef = useRef<NodeJS.Timeout | null>(null)
-  const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const streamTimeoutRef = useRef<number | null>(null)
+  const scrollTimeoutRef = useRef<number | null>(null)
+  const inputRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     fetchModels()
@@ -306,6 +338,12 @@ export default function ChatArea({
     const messageContent = input.trim()
     setInput('')
     setLoading(true)
+    // Se for retry in-place, marca bolha alvo como "digitando"
+    if (retryTargetId) {
+      setTypingMessageId(retryTargetId)
+      // Remove estado de erro visual imediatamente
+      setMessages(prev => prev.map(m => m.id === retryTargetId ? { ...m, error: false, content: '' } : m))
+    }
     
     // Garante que vai fazer scroll para ver a nova mensagem
     setShouldAutoScroll(true)
@@ -323,7 +361,10 @@ export default function ChatArea({
 
     try {
       if (conversationId) {
-        setMessages(prev => [...prev, userMessage])
+        // Se não for retry, adiciona mensagem do usuário; no retry, mantemos bolhas existentes
+        if (!retryTargetId) {
+          setMessages(prev => [...prev, userMessage])
+        }
         
         const response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`, {
           method: 'POST',
@@ -347,14 +388,47 @@ export default function ChatArea({
             imageData: data.imageData
           }
           
-          setStreamingMessage(assistantMessage)
-          setIsStreaming(true)
-          setShouldAutoScroll(true) // Garante auto-scroll durante streaming
-          streamTimeoutRef.current = setTimeout(() => {
-            setStreamingMessage(null)
-            setIsStreaming(false)
-            setMessages(prev => [...prev, assistantMessage])
-          }, data.assistant_response.length * 6 + 500)
+          if (retryTargetId) {
+            // Substitui a bolha de erro diretamente pelo conteúdo e animação de digitação
+            setTypingMessageId(retryTargetId)
+            setMessages(prev => prev.map(m => m.id === retryTargetId ? { ...assistantMessage, id: m.id } : m))
+            setShouldAutoScroll(true)
+            const duration = (assistantMessage.content?.length || 0) * 6 + 500
+            streamTimeoutRef.current = setTimeout(() => {
+              setTypingMessageId(null)
+              setRetryTargetId(null)
+            }, duration)
+          } else {
+            setStreamingMessage(assistantMessage)
+            setIsStreaming(true)
+            setShouldAutoScroll(true) // Garante auto-scroll durante streaming
+            streamTimeoutRef.current = setTimeout(() => {
+              setStreamingMessage(null)
+              setIsStreaming(false)
+              setMessages(prev => [...prev, assistantMessage])
+            }, data.assistant_response.length * 6 + 500)
+          }
+        } else {
+          // Mostra mensagem de erro com opção de retry
+          if (retryTargetId) {
+            // Mantém a bolha de erro e repõe retryData
+            setMessages(prev => prev.map(m => m.id === retryTargetId ? {
+              ...m,
+              error: true,
+              content: 'Erro ao gerar resposta',
+              retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+            } : m))
+          } else {
+            const errMsg: Message = {
+              id: `assistant-error-${Date.now()}`,
+              role: 'assistant',
+              content: 'Erro ao gerar resposta',
+              timestamp: new Date().toISOString(),
+              error: true,
+              retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+            }
+            setMessages(prev => [...prev, errMsg])
+          }
         }
       } else {
         // Para chat sem contexto, primeiro cria uma conversa automaticamente
@@ -395,15 +469,44 @@ export default function ChatArea({
                 imageData: data.imageData
               }
               
-              setStreamingMessage(assistantMessage)
-              setIsStreaming(true)
-              streamTimeoutRef.current = setTimeout(() => {
-                setStreamingMessage(null)
-                setIsStreaming(false)
-                setMessages(prev => [...prev, assistantMessage])
-                // Força atualização da sidebar
-                window.dispatchEvent(new CustomEvent('conversation-created', { detail: newConv }))
-              }, data.assistant_response.length * 6 + 500)
+              if (retryTargetId) {
+                setTypingMessageId(retryTargetId)
+                setMessages(prev => prev.map(m => m.id === retryTargetId ? { ...assistantMessage, id: m.id } : m))
+                const duration = (assistantMessage.content?.length || 0) * 6 + 500
+                streamTimeoutRef.current = setTimeout(() => {
+                  setTypingMessageId(null)
+                  setRetryTargetId(null)
+                }, duration)
+              } else {
+                setStreamingMessage(assistantMessage)
+                setIsStreaming(true)
+                streamTimeoutRef.current = setTimeout(() => {
+                  setStreamingMessage(null)
+                  setIsStreaming(false)
+                  setMessages(prev => [...prev, assistantMessage])
+                  // Força atualização da sidebar
+                  window.dispatchEvent(new CustomEvent('conversation-created', { detail: newConv }))
+                }, data.assistant_response.length * 6 + 500)
+              }
+            } else {
+              if (retryTargetId) {
+                setMessages(prev => prev.map(m => m.id === retryTargetId ? {
+                  ...m,
+                  error: true,
+                  content: 'Erro ao gerar resposta',
+                  retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+                } : m))
+              } else {
+                const errMsg: Message = {
+                  id: `assistant-error-${Date.now()}`,
+                  role: 'assistant',
+                  content: 'Erro ao gerar resposta',
+                  timestamp: new Date().toISOString(),
+                  error: true,
+                  retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+                }
+                setMessages(prev => [...prev, errMsg])
+              }
             }
           }
         } catch (convError) {
@@ -420,31 +523,85 @@ export default function ChatArea({
               type: isImageMode ? 'image' : 'text'
             })
           })
-
-          const data = await response.json()
-          const assistantMessage: Message = {
-            id: `assistant-${Date.now()}`,
-            role: 'assistant',
-            content: data.response,
-            timestamp: new Date().toISOString(),
-            type: isImageMode ? 'image' : 'text',
-            imageData: data.imageData
+          if (response.ok) {
+            const data = await response.json()
+            const assistantMessage: Message = {
+              id: `assistant-${Date.now()}`,
+              role: 'assistant',
+              content: data.response,
+              timestamp: new Date().toISOString(),
+              type: isImageMode ? 'image' : 'text',
+              imageData: data.imageData
+            }
+            
+            if (retryTargetId) {
+              setTypingMessageId(retryTargetId)
+              setMessages(prev => prev.map(m => m.id === retryTargetId ? { ...assistantMessage, id: m.id } : m))
+              setShouldAutoScroll(true)
+              const duration = (assistantMessage.content?.length || 0) * 6 + 500
+              streamTimeoutRef.current = setTimeout(() => {
+                setTypingMessageId(null)
+                setRetryTargetId(null)
+              }, duration)
+            } else {
+              setStreamingMessage(assistantMessage)
+              setIsStreaming(true)
+              setShouldAutoScroll(true) // Garante auto-scroll durante streaming
+              streamTimeoutRef.current = setTimeout(() => {
+                setStreamingMessage(null)
+                setIsStreaming(false)
+                setMessages(prev => [...prev, assistantMessage])
+              }, data.response.length * 6 + 500)
+            }
+          } else {
+            if (retryTargetId) {
+              setMessages(prev => prev.map(m => m.id === retryTargetId ? {
+                ...m,
+                error: true,
+                content: 'Erro ao gerar resposta',
+                retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+              } : m))
+            } else {
+              const errMsg: Message = {
+                id: `assistant-error-${Date.now()}`,
+                role: 'assistant',
+                content: 'Erro ao gerar resposta',
+                timestamp: new Date().toISOString(),
+                error: true,
+                retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+              }
+              setMessages(prev => [...prev, errMsg])
+            }
           }
-          
-          setStreamingMessage(assistantMessage)
-          setIsStreaming(true)
-          setShouldAutoScroll(true) // Garante auto-scroll durante streaming
-          streamTimeoutRef.current = setTimeout(() => {
-            setStreamingMessage(null)
-            setIsStreaming(false)
-            setMessages(prev => [...prev, assistantMessage])
-          }, data.response.length * 6 + 500)
         }
       }
     } catch (error) {
       console.error('Error sending message:', error)
+      // Falha inesperada: adiciona bubble de erro com retry
+      if (retryTargetId) {
+        setMessages(prev => prev.map(m => m.id === retryTargetId ? {
+          ...m,
+          error: true,
+          content: 'Erro ao enviar mensagem',
+          retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+        } : m))
+      } else {
+        const errMsg: Message = {
+          id: `assistant-error-${Date.now()}`,
+          role: 'assistant',
+          content: 'Erro ao enviar mensagem',
+          timestamp: new Date().toISOString(),
+          error: true,
+          retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+        }
+        setMessages(prev => [...prev, errMsg])
+      }
     } finally {
       setLoading(false)
+      if (retryTargetId) {
+        // Finaliza estado de digitação da bolha alvo se algo ficou pendente
+        setTypingMessageId(null)
+      }
     }
   }
 
@@ -534,12 +691,45 @@ export default function ChatArea({
           setIsStreaming(false)
           setMessages(prev => [...prev, assistantMessage])
         }, data.assistant_response.length * 6 + 500)
+      } else {
+        const errMsg: Message = {
+          id: `assistant-error-${Date.now()}`,
+          role: 'assistant',
+          content: 'Erro ao gerar resposta',
+          timestamp: new Date().toISOString(),
+          error: true,
+          retryData: { content: editingContent.trim(), model: selectedModel, type: 'text' }
+        }
+        setMessages(prev => [...prev, errMsg])
       }
     } catch (error) {
       console.error('Error editing message:', error)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRetry = (retryData: NonNullable<Message['retryData']>) => {
+    // Restaura modo e modelo, copia a mesma mensagem para o input (sem auto-enviar)
+    if (retryData.type === 'image') {
+      setIsImageMode(true)
+      setSelectedImageModel(retryData.model)
+    } else {
+      setIsImageMode(false)
+      setSelectedTextModel(retryData.model)
+      onModelChange(retryData.model)
+    }
+    setInput(retryData.content)
+    setShouldAutoScroll(true)
+    // Foca o textarea e posiciona o cursor ao final
+    setTimeout(() => {
+      if (inputRef.current) {
+        const el = inputRef.current
+        el.focus()
+        const len = el.value.length
+        el.setSelectionRange(len, len)
+      }
+    }, 0)
   }
 
   const currentModels = isImageMode ? imageModels : textModels
@@ -668,20 +858,22 @@ export default function ChatArea({
           </div>
         ) : (
           <div className="px-4 py-2 space-y-4">
-            {messages.map((message) => (
+      {messages.map((message) => (
               <MessageBubble 
                 key={message.id} 
                 message={message}
+        isTyping={typingMessageId === message.id}
                 isEditing={editingMessageId === message.id}
                 editingContent={editingContent}
                 onStartEdit={() => startEditingMessage(message)}
                 onSaveEdit={() => saveEditedMessage(message.id)}
                 onCancelEdit={cancelEditing}
-                onEditContentChange={setEditingContent}
+        onEditContentChange={setEditingContent}
+        onRetry={message.retryData ? ((rd) => { setRetryTargetId(message.id); handleRetry(rd) }) : undefined}
               />
             ))}
             
-            {loading && !streamingMessage && (
+            {loading && !streamingMessage && !retryTargetId && (
               <div className="flex justify-start">
                 <div className="flex gap-3 max-w-4xl">
                   <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600 flex items-center justify-center">
@@ -724,6 +916,7 @@ export default function ChatArea({
               <div className="flex items-end gap-2 p-3">
                 <div className="flex-1 relative">
                   <textarea
+                    ref={inputRef}
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}

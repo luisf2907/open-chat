@@ -71,6 +71,10 @@ function createRoutes(database, geminiService) {
 
       // Use provided model or default
       const selectedModel = model || 'gemini-2.5-flash';
+      // Log which model will be used for this message
+      console.log(
+        `[BACKEND] Conversa ${id} -> mensagem '${String(content).slice(0, 80)}' (${type || 'text'}) usando modelo: ${selectedModel}`
+      );
 
       await database.addMessage(id, 'user', content, type || 'text');
       
@@ -84,14 +88,17 @@ function createRoutes(database, geminiService) {
         imageData = imageResult.imageData;
         
         // Salva mensagem com dados da imagem
-        await database.addMessage(id, 'assistant', assistantResponse, 'image', imageData);
+        await database.addMessage(id, 'assistant', assistantResponse || '[sem texto retornado]', 'image', imageData);
       } else {
         // Geração de texto normal
         const messages = await database.getConversationMessages(id);
         assistantResponse = await geminiService.generateResponse(messages, selectedModel);
+        if (!assistantResponse) {
+          throw new Error('Empty assistant response');
+        }
         
         // Salva mensagem de texto
-        await database.addMessage(id, 'assistant', assistantResponse, 'text');
+        await database.addMessage(id, 'assistant', assistantResponse || '[resposta vazia]', 'text');
       }
       
       await database.updateConversationTimestamp(id);
@@ -182,6 +189,10 @@ function createRoutes(database, geminiService) {
 
       // Use provided model or default
       const selectedModel = model || 'gemini-2.5-flash';
+      // Log which model will be used for this simple chat message
+      console.log(
+        `[BACKEND] Chat simples -> mensagem '${String(message).slice(0, 80)}' (${type || 'text'}) usando modelo: ${selectedModel}`
+      );
       
       let response;
       let imageData = null;
@@ -194,6 +205,9 @@ function createRoutes(database, geminiService) {
       } else {
         // Geração de texto normal
         response = await geminiService.generateResponseSimple(message, selectedModel);
+        if (!response) {
+          throw new Error('Empty assistant response');
+        }
       }
       
       res.json({ 

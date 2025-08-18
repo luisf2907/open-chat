@@ -19,8 +19,21 @@ class GeminiService {
         model: modelName,
         contents: formattedMessages
       });
-      
-      return response.text;
+      // Normalize text result across SDK variants
+      let text = '';
+      if (response) {
+        if (typeof response.text === 'function') {
+          try { text = response.text(); } catch (_) { /* noop */ }
+        } else if (typeof response.text === 'string') {
+          text = response.text;
+        }
+        if (!text && Array.isArray(response.candidates) && response.candidates[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.text) text += part.text;
+          }
+        }
+      }
+      return text || '';
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new Error(`Failed to generate response from ${modelName}: ${error.message}`);
@@ -33,7 +46,21 @@ class GeminiService {
         model: modelName,
         contents: [{ role: 'user', parts: [{ text: prompt }] }]
       });
-      return response.text;
+      // Normalize text result across SDK variants
+      let text = '';
+      if (response) {
+        if (typeof response.text === 'function') {
+          try { text = response.text(); } catch (_) { /* noop */ }
+        } else if (typeof response.text === 'string') {
+          text = response.text;
+        }
+        if (!text && Array.isArray(response.candidates) && response.candidates[0]?.content?.parts) {
+          for (const part of response.candidates[0].content.parts) {
+            if (part.text) text += part.text;
+          }
+        }
+      }
+      return text || '';
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new Error(`Failed to generate response from ${modelName}: ${error.message}`);
