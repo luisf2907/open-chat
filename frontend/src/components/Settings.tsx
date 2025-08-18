@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react'
-<<<<<<< HEAD
-import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3 } from 'lucide-react'
-import { useToast } from '../contexts/ToastContext'
-=======
 import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3, Paperclip } from 'lucide-react'
->>>>>>> ed5bde3 (feat: imagens + documentos)
+import { useToast } from '../contexts/ToastContext'
 
 interface Model {
   id: string

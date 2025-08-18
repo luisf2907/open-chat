@@ -1183,18 +1183,13 @@ export default function ChatArea({
                   >
                     <div className="flex items-center justify-between">
                       <div>
-<<<<<<< HEAD
-                        <div className="font-medium text-sm text-white">{model.name}</div>
-                        <div className="text-xs text-emerald-200 mt-0.5">{model.description}</div>
-=======
-                        <div className="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-1">
+                        <div className="font-medium text-sm text-white flex items-center gap-1">
                           {model.name}
                           {model.supportsFiles && (
-                            <Paperclip size={12} className="text-blue-600 dark:text-blue-400" />
+                            <Paperclip size={12} className="text-blue-400" />
                           )}
                         </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{model.description}</div>
->>>>>>> ed5bde3 (feat: imagens + documentos)
+                        <div className="text-xs text-emerald-200 mt-0.5">{model.description}</div>
                       </div>
                       {model.badge && (
                         <span className="text-xs px-1.5 py-0.5 bg-emerald-800/30 text-emerald-100 rounded-md font-medium">
