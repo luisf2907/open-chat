@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Plus, MessageSquare, Trash2, Sun, Moon, PanelRightClose } from 'lucide-react'
+import { Plus, MessageSquare, Trash2, Sun, Moon, PanelRightClose, Settings } from 'lucide-react'
 import { useTheme } from '../contexts/ThemeContext'
+import SettingsModal from './Settings'
 
 interface Conversation {
   id: string
@@ -19,6 +20,7 @@ interface SidebarProps {
 export default function Sidebar({ isOpen, onToggle, selectedConversation, onSelectConversation }: SidebarProps) {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const { theme, toggleTheme } = useTheme()
 
   useEffect(() => {
@@ -100,6 +102,13 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white">Chat AI</h2>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSettingsOpen(true)}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
+              title="Configurações"
+            >
+              <Settings size={18} className="text-gray-600 dark:text-gray-300" />
+            </button>
             <button
               onClick={toggleTheme}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
@@ -188,6 +197,11 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
           </div>
         )}
       </div>
+      
+      <SettingsModal 
+        isOpen={settingsOpen} 
+        onClose={() => setSettingsOpen(false)} 
+      />
     </div>
   )
 }

@@ -11,17 +11,47 @@ function createRoutes(database, geminiService) {
       const modelsPath = path.join(__dirname, 'models.json');
       const modelsData = JSON.parse(fs.readFileSync(modelsPath, 'utf8'));
       
-      // Filter only enabled models
-      const enabledTextModels = modelsData.textModels.filter(model => model.enabled);
-      const enabledImageModels = modelsData.imageModels.filter(model => model.enabled);
+      // Check if it's a settings request (return all models) or regular use (enabled only)
+      const isSettings = req.query.settings === 'true';
       
-      res.json({ 
-        textModels: enabledTextModels,
-        imageModels: enabledImageModels
-      });
+      if (isSettings) {
+        // Return all models for settings panel
+        res.json(modelsData);
+      } else {
+        // Filter only enabled models for regular use
+        const enabledTextModels = modelsData.textModels.filter(model => model.enabled);
+        const enabledImageModels = modelsData.imageModels.filter(model => model.enabled);
+        
+        res.json({ 
+          textModels: enabledTextModels,
+          imageModels: enabledImageModels
+        });
+      }
     } catch (error) {
       console.error('Error loading models:', error);
       res.status(500).json({ error: 'Failed to load available models' });
+    }
+  });
+
+  // Update models configuration
+  router.put('/models', (req, res) => {
+    try {
+      const modelsPath = path.join(__dirname, 'models.json');
+      const newModelsData = req.body;
+      
+      // Validate structure
+      if (!newModelsData.textModels || !newModelsData.imageModels) {
+        return res.status(400).json({ error: 'Invalid models data structure' });
+      }
+      
+      // Write to file
+      fs.writeFileSync(modelsPath, JSON.stringify(newModelsData, null, 2), 'utf8');
+      
+      console.log('Models configuration updated successfully');
+      res.json({ success: true, message: 'Models configuration updated' });
+    } catch (error) {
+      console.error('Error saving models:', error);
+      res.status(500).json({ error: 'Failed to save models configuration' });
     }
   });
   router.post('/conversations', async (req, res) => {
