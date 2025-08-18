@@ -267,7 +267,7 @@ npm run install:all
 
 ## 📄 Licença
 
-Este projeto está sob a licença ISC. Veja o arquivo `LICENSE` para detalhes.
+Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para detalhes.
 
 ## 👥 Autor
 
