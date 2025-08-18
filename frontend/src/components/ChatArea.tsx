@@ -228,6 +228,9 @@ export default function ChatArea({
   }, [])
 
   useEffect(() => {
+    // Limpa streaming ativo ao trocar de conversa
+    cleanupStreaming()
+    
     if (conversationId) {
       fetchMessages()
     } else {
@@ -276,6 +279,13 @@ export default function ChatArea({
       scrollToBottom()
     }
   }, [messages, shouldAutoScroll])
+
+  // Cleanup streaming ao desmontar componente
+  useEffect(() => {
+    return () => {
+      cleanupStreaming()
+    }
+  }, [])
 
   const fetchModels = async () => {
     try {
@@ -603,6 +613,21 @@ export default function ChatArea({
         setTypingMessageId(null)
       }
     }
+  }
+
+  // Função para limpar streaming ativo (evita mensagens duplicadas ao trocar conversa)
+  const cleanupStreaming = () => {
+    if (streamTimeoutRef.current) {
+      clearTimeout(streamTimeoutRef.current)
+      streamTimeoutRef.current = null
+    }
+    if (scrollTimeoutRef.current) {
+      clearTimeout(scrollTimeoutRef.current) 
+      scrollTimeoutRef.current = null
+    }
+    setStreamingMessage(null)
+    setIsStreaming(false)
+    setLoading(false)
   }
 
   const stopStreaming = () => {
