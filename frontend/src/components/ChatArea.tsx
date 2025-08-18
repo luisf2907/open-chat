@@ -838,7 +838,7 @@ export default function ChatArea({
             </button>
 
             {showModelSelector && (
-              <div className="absolute top-full left-0 mt-1 w-72 bg-white/95 dark:bg-dark-800/95 backdrop-blur-xl border border-gray-200/60 dark:border-dark-600/60 rounded-xl shadow-xl z-30 overflow-hidden">
+              <div className="absolute top-full left-0 mt-1 w-72 bg-emerald-900 dark:bg-emerald-900 border border-emerald-700 rounded-xl shadow-xl z-30 overflow-hidden text-emerald-100">
                 {currentModels.map((model) => (
                   <button
                     key={model.id}
@@ -851,17 +851,17 @@ export default function ChatArea({
                       }
                       setShowModelSelector(false)
                     }}
-                    className={`w-full text-left p-3 hover:bg-gray-50/80 dark:hover:bg-dark-700/80 transition-colors border-b border-gray-100/50 dark:border-dark-700/50 last:border-b-0 ${
-                      currentSelectedModel === model.id ? 'bg-primary-50/80 dark:bg-primary-900/20' : ''
+                    className={`w-full text-left p-3 hover:bg-emerald-800 transition-colors border-b border-emerald-800 last:border-b-0 ${
+                      currentSelectedModel === model.id ? 'bg-emerald-800/25' : ''
                     }`}
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <div className="font-medium text-sm text-gray-900 dark:text-white">{model.name}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{model.description}</div>
+                        <div className="font-medium text-sm text-white">{model.name}</div>
+                        <div className="text-xs text-emerald-200 mt-0.5">{model.description}</div>
                       </div>
                       {model.badge && (
-                        <span className="text-xs px-1.5 py-0.5 bg-primary-100 dark:bg-primary-900/30 text-primary-700 dark:text-primary-300 rounded-md font-medium">
+                        <span className="text-xs px-1.5 py-0.5 bg-emerald-800/30 text-emerald-100 rounded-md font-medium">
                           {model.badge}
                         </span>
                       )}
