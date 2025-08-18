@@ -1,6 +1,10 @@
 import { useState, useEffect } from 'react'
+<<<<<<< HEAD
 import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3 } from 'lucide-react'
 import { useToast } from '../contexts/ToastContext'
+=======
+import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3, Paperclip } from 'lucide-react'
+>>>>>>> ed5bde3 (feat: imagens + documentos)
 
 interface Model {
   id: string
@@ -10,6 +14,8 @@ interface Model {
   type: 'text' | 'image'
   enabled: boolean
   default: boolean
+  supportsFiles?: boolean
+  supportedFileTypes?: string[]
 }
 
 interface ModelsData {
@@ -34,7 +40,9 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     badge: '',
     type: 'text',
     enabled: true,
-    default: false
+    default: false,
+    supportsFiles: false,
+    supportedFileTypes: []
   })
   const [showAddForm, setShowAddForm] = useState(false)
   const { showToast } = useToast()
@@ -141,7 +149,9 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
       badge: '',
       type: 'text',
       enabled: true,
-      default: false
+      default: false,
+      supportsFiles: false,
+      supportedFileTypes: []
     })
     setShowAddForm(false)
   }
@@ -267,6 +277,68 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                         </select>
                       </div>
                     </div>
+                    
+                    {/* Configurações de arquivos - apenas para modelos de texto */}
+                    {newModel.type === 'text' && (
+                      <div className="mt-4 p-4 bg-gray-50 dark:bg-dark-600 rounded-lg">
+                        <h5 className="text-sm font-medium mb-3 text-gray-900 dark:text-white">Suporte a Arquivos</h5>
+                        <div className="space-y-3">
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id="newModel-supportsFiles"
+                              checked={newModel.supportsFiles || false}
+                              onChange={(e) => setNewModel(prev => ({ 
+                                ...prev, 
+                                supportsFiles: e.target.checked,
+                                supportedFileTypes: e.target.checked ? ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'] : []
+                              }))}
+                              className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                            />
+                            <label htmlFor="newModel-supportsFiles" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                              Aceita imagens e documentos
+                            </label>
+                          </div>
+                          
+                          {newModel.supportsFiles && (
+                            <div>
+                              <label className="block text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">
+                                Tipos de arquivo suportados:
+                              </label>
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                {[
+                                  { value: 'image/jpeg', label: 'JPEG' },
+                                  { value: 'image/png', label: 'PNG' },
+                                  { value: 'image/gif', label: 'GIF' },
+                                  { value: 'image/webp', label: 'WebP' },
+                                  { value: 'application/pdf', label: 'PDF' }
+                                ].map(fileType => (
+                                  <div key={fileType.value} className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      id={`newModel-${fileType.value}`}
+                                      checked={newModel.supportedFileTypes?.includes(fileType.value) || false}
+                                      onChange={(e) => {
+                                        const current = newModel.supportedFileTypes || [];
+                                        const updated = e.target.checked
+                                          ? [...current, fileType.value]
+                                          : current.filter(type => type !== fileType.value);
+                                        setNewModel(prev => ({ ...prev, supportedFileTypes: updated }));
+                                      }}
+                                      className="w-3 h-3 text-primary-600 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor={`newModel-${fileType.value}`} className="ml-1 text-gray-600 dark:text-gray-400">
+                                      {fileType.label}
+                                    </label>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
                     <div className="flex gap-2 mt-4">
                       <button
                         onClick={addNewModel}
@@ -309,6 +381,67 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                               className="w-full px-3 py-2 border border-gray-300 dark:border-dark-500 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-dark-700 dark:text-white"
                               placeholder="Badge (opcional)"
                             />
+                            
+                            {/* Configurações de arquivos - apenas para modelos de texto */}
+                            {activeTab === 'text' && (
+                              <div className="p-4 bg-gray-50 dark:bg-dark-600 rounded-lg">
+                                <h5 className="text-sm font-medium mb-3 text-gray-900 dark:text-white">Suporte a Arquivos</h5>
+                                <div className="space-y-3">
+                                  <div className="flex items-center">
+                                    <input
+                                      type="checkbox"
+                                      id={`${model.id}-supportsFiles`}
+                                      checked={model.supportsFiles || false}
+                                      onChange={(e) => updateModel(activeTab, model.id, { 
+                                        supportsFiles: e.target.checked,
+                                        supportedFileTypes: e.target.checked ? ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'] : []
+                                      })}
+                                      className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
+                                    />
+                                    <label htmlFor={`${model.id}-supportsFiles`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
+                                      Aceita imagens e documentos
+                                    </label>
+                                  </div>
+                                  
+                                  {model.supportsFiles && (
+                                    <div>
+                                      <label className="block text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">
+                                        Tipos de arquivo suportados:
+                                      </label>
+                                      <div className="grid grid-cols-2 gap-2 text-xs">
+                                        {[
+                                          { value: 'image/jpeg', label: 'JPEG' },
+                                          { value: 'image/png', label: 'PNG' },
+                                          { value: 'image/gif', label: 'GIF' },
+                                          { value: 'image/webp', label: 'WebP' },
+                                          { value: 'application/pdf', label: 'PDF' }
+                                        ].map(fileType => (
+                                          <div key={fileType.value} className="flex items-center">
+                                            <input
+                                              type="checkbox"
+                                              id={`${model.id}-${fileType.value}`}
+                                              checked={model.supportedFileTypes?.includes(fileType.value) || false}
+                                              onChange={(e) => {
+                                                const current = model.supportedFileTypes || [];
+                                                const updated = e.target.checked
+                                                  ? [...current, fileType.value]
+                                                  : current.filter(type => type !== fileType.value);
+                                                updateModel(activeTab, model.id, { supportedFileTypes: updated });
+                                              }}
+                                              className="w-3 h-3 text-primary-600 rounded focus:ring-primary-500"
+                                            />
+                                            <label htmlFor={`${model.id}-${fileType.value}`} className="ml-1 text-gray-600 dark:text-gray-400">
+                                              {fileType.label}
+                                            </label>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                            
                             <div className="flex gap-2">
                               <button
                                 onClick={() => setEditingModel(null)}
@@ -328,6 +461,9 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                           <div>
                             <div className="flex items-center gap-2 mb-1">
                               <h4 className="font-semibold text-gray-900 dark:text-white">{model.name}</h4>
+                              {model.supportsFiles && (
+                                <Paperclip size={16} className="text-blue-600 dark:text-blue-400" title="Aceita imagens e PDFs" />
+                              )}
                               {model.badge && (
                                 <span className="px-2 py-1 bg-primary-100 dark:bg-primary-900 text-primary-800 dark:text-primary-200 text-xs rounded-full font-medium">
                                   {model.badge}
@@ -340,6 +476,31 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                               )}
                             </div>
                             <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{model.description}</p>
+                            
+                            {/* Mostrar tipos de arquivo suportados */}
+                            {model.supportsFiles && model.supportedFileTypes && model.supportedFileTypes.length > 0 && (
+                              <div className="mb-2">
+                                <div className="text-xs text-gray-500 dark:text-gray-400 mb-1">Aceita:</div>
+                                <div className="flex flex-wrap gap-1">
+                                  {model.supportedFileTypes.map(fileType => {
+                                    const typeMap: { [key: string]: { label: string; color: string } } = {
+                                      'image/jpeg': { label: 'JPEG', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+                                      'image/png': { label: 'PNG', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+                                      'image/gif': { label: 'GIF', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+                                      'image/webp': { label: 'WebP', color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400' },
+                                      'application/pdf': { label: 'PDF', color: 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }
+                                    };
+                                    const typeInfo = typeMap[fileType];
+                                    return typeInfo ? (
+                                      <span key={fileType} className={`px-2 py-1 text-xs rounded-full font-medium ${typeInfo.color}`}>
+                                        {typeInfo.label}
+                                      </span>
+                                    ) : null;
+                                  })}
+                                </div>
+                              </div>
+                            )}
+                            
                             <p className="text-xs text-gray-500 dark:text-gray-500 font-mono">{model.id}</p>
                           </div>
                         )}

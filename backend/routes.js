@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 
-function createRoutes(database, geminiService) {
+function createRoutes(database, geminiService, upload) {
   
   // Get available models
   router.get('/models', (req, res) => {
@@ -89,10 +89,11 @@ function createRoutes(database, geminiService) {
     }
   });
 
-  router.post('/conversations/:id/messages', async (req, res) => {
+  router.post('/conversations/:id/messages', upload.array('files'), async (req, res) => {
     try {
       const { id } = req.params;
       const { content, model, type } = req.body;
+      const files = req.files || [];
 
 
       if (!content) {
@@ -106,7 +107,22 @@ function createRoutes(database, geminiService) {
         `[BACKEND] Conversa ${id} -> mensagem '${String(content).slice(0, 80)}' (${type || 'text'}) usando modelo: ${selectedModel}`
       );
 
-      await database.addMessage(id, 'user', content, type || 'text');
+      // Salva informações dos arquivos anexados como JSON (metadados)
+      const attachments = files.length > 0 ? JSON.stringify(files.map(file => ({
+        name: file.originalname,
+        type: file.mimetype,
+        size: file.size
+      }))) : null;
+
+      // Salva arquivos completos como base64 (dados completos)
+      const filesData = files.length > 0 ? JSON.stringify(files.map(file => ({
+        name: file.originalname,
+        type: file.mimetype,
+        size: file.size,
+        data: file.buffer.toString('base64')
+      }))) : null;
+
+      await database.addMessage(id, 'user', content, type || 'text', null, attachments, filesData);
       
       let assistantResponse;
       let imageData = null;
@@ -120,9 +136,9 @@ function createRoutes(database, geminiService) {
         // Salva mensagem com dados da imagem
         await database.addMessage(id, 'assistant', assistantResponse || '[sem texto retornado]', 'image', imageData);
       } else {
-        // Geração de texto normal
+        // Geração de texto normal (pode incluir arquivos)
         const messages = await database.getConversationMessages(id);
-        assistantResponse = await geminiService.generateResponse(messages, selectedModel);
+        assistantResponse = await geminiService.generateResponse(messages, selectedModel, files);
         if (!assistantResponse) {
           throw new Error('Empty assistant response');
         }
@@ -208,9 +224,10 @@ function createRoutes(database, geminiService) {
     }
   });
 
-  router.post('/chat', async (req, res) => {
+  router.post('/chat', upload.array('files'), async (req, res) => {
     try {
       const { message, model, type } = req.body;
+      const files = req.files || [];
 
 
       if (!message) {
@@ -233,8 +250,8 @@ function createRoutes(database, geminiService) {
         response = imageResult.text || 'Imagem gerada com sucesso!';
         imageData = imageResult.imageData;
       } else {
-        // Geração de texto normal
-        response = await geminiService.generateResponseSimple(message, selectedModel);
+        // Geração de texto normal (pode incluir arquivos)
+        response = await geminiService.generateResponseSimple(message, selectedModel, files);
         if (!response) {
           throw new Error('Empty assistant response');
         }

@@ -43,6 +43,18 @@ class Database {
           console.error('Error adding image_data column:', err);
         }
       });
+
+      this.db.run(`ALTER TABLE messages ADD COLUMN attachments TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.error('Error adding attachments column:', err);
+        }
+      });
+
+      this.db.run(`ALTER TABLE messages ADD COLUMN files_data TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.error('Error adding files_data column:', err);
+        }
+      });
     });
   }
 
@@ -84,11 +96,11 @@ class Database {
     });
   }
 
-  addMessage(conversationId, role, content, messageType = 'text', imageData = null) {
+  addMessage(conversationId, role, content, messageType = 'text', imageData = null, attachments = null, filesData = null) {
     return new Promise((resolve, reject) => {
       this.db.run(
-        'INSERT INTO messages (conversation_id, role, content, message_type, image_data) VALUES (?, ?, ?, ?, ?)',
-        [conversationId, role, content, messageType, imageData],
+        'INSERT INTO messages (conversation_id, role, content, message_type, image_data, attachments, files_data) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [conversationId, role, content, messageType, imageData, attachments, filesData],
         function(err) {
           if (err) reject(err);
           else {

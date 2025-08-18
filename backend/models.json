@@ -7,7 +7,15 @@
       "badge": "NOVO",
       "type": "text",
       "enabled": true,
-      "default": true
+      "default": true,
+      "supportsFiles": true,
+      "supportedFileTypes": [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/pdf"
+      ]
     },
     {
       "id": "gemini-2.5-pro",
@@ -16,7 +24,9 @@
       "badge": "PRO",
       "type": "text",
       "enabled": true,
-      "default": false
+      "default": false,
+      "supportsFiles": false,
+      "supportedFileTypes": []
     },
     {
       "id": "gemma-3-27b-it",
@@ -25,7 +35,15 @@
       "badge": "LIGHT",
       "type": "text",
       "enabled": true,
-      "default": false
+      "default": false,
+      "supportsFiles": true,
+      "supportedFileTypes": [
+        "image/jpeg",
+        "image/png",
+        "image/gif",
+        "image/webp",
+        "application/pdf"
+      ]
     }
   ],
   "imageModels": [

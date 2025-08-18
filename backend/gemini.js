@@ -8,12 +8,48 @@ class GeminiService {
     this.defaultModel = 'gemini-2.5-flash';
   }
 
-  async generateResponse(messages, modelName = this.defaultModel) {
+  async generateResponse(messages, modelName = this.defaultModel, files = []) {
     try {
-      const formattedMessages = messages.map(msg => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }));
+      const formattedMessages = messages.map(msg => {
+        const messageParts = [{ text: msg.content }];
+        
+        // Adiciona arquivos do histórico se existirem
+        if (msg.files_data) {
+          try {
+            const savedFiles = JSON.parse(msg.files_data);
+            savedFiles.forEach(file => {
+              messageParts.push({
+                inlineData: {
+                  mimeType: file.type,
+                  data: file.data
+                }
+              });
+            });
+          } catch (error) {
+            console.error('Error parsing saved files:', error);
+          }
+        }
+        
+        return {
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: messageParts
+        };
+      });
+
+      // Se houver arquivos novos (da requisição atual), adiciona na última mensagem do usuário
+      if (files.length > 0 && formattedMessages.length > 0) {
+        const lastMessage = formattedMessages[formattedMessages.length - 1];
+        if (lastMessage.role === 'user') {
+          files.forEach(file => {
+            lastMessage.parts.push({
+              inlineData: {
+                mimeType: file.mimetype,
+                data: file.buffer.toString('base64')
+              }
+            });
+          });
+        }
+      }
 
       const response = await this.genAI.models.generateContent({
         model: modelName,
@@ -40,11 +76,25 @@ class GeminiService {
     }
   }
 
-  async generateResponseSimple(prompt, modelName = this.defaultModel) {
+  async generateResponseSimple(prompt, modelName = this.defaultModel, files = []) {
     try {
+      const parts = [{ text: prompt }];
+      
+      // Adiciona arquivos se houver
+      if (files.length > 0) {
+        files.forEach(file => {
+          parts.push({
+            inlineData: {
+              mimeType: file.mimetype,
+              data: file.buffer.toString('base64')
+            }
+          });
+        });
+      }
+
       const response = await this.genAI.models.generateContent({
         model: modelName,
-        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+        contents: [{ role: 'user', parts }]
       });
       // Normalize text result across SDK variants
       let text = '';

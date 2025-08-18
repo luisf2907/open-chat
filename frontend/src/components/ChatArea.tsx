@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, ArrowDown, Edit3, Check, X, Image, FileText, RotateCcw } from 'lucide-react'
+import { ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, ArrowDown, Edit3, Check, X, Image, FileText, RotateCcw, Paperclip, File } from 'lucide-react'
 import { useTypewriter } from '../hooks/useTypewriter'
 import TypingIndicator from './TypingIndicator'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -18,6 +18,17 @@ interface Message {
     model: string
     type: 'text' | 'image'
   }
+  attachments?: Array<{
+    name: string
+    type: string
+    size: number
+  }>
+  filesData?: Array<{
+    name: string
+    type: string
+    size: number
+    data: string
+  }>
 }
 
 interface Model {
@@ -28,6 +39,8 @@ interface Model {
   enabled: boolean
   default: boolean
   type: 'text' | 'image'
+  supportsFiles?: boolean
+  supportedFileTypes?: string[]
 }
 
 interface ChatAreaProps {
@@ -169,8 +182,96 @@ function MessageBubble({
                 )}
               </div>
             ) : (
-              <div className="whitespace-pre-wrap">
-                {content}
+              <div>
+                <div className="whitespace-pre-wrap">
+                  {content}
+                </div>
+                {((message.attachments && message.attachments.length > 0) || (message.filesData && message.filesData.length > 0)) && (
+                  <div className="mt-3">
+                    <div className="grid grid-cols-2 gap-2 max-w-sm">
+                      {/* Mostra arquivos com dados completos (preferência) */}
+                      {message.filesData ? message.filesData.map((file, index) => (
+                        <div key={index} className="group relative">
+                          {file.type.startsWith('image/') ? (
+                            // Preview de imagem melhorado
+                            <div className="relative overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-700">
+                              <img 
+                                src={`data:${file.type};base64,${file.data}`}
+                                alt={file.name}
+                                className="w-full h-32 object-cover cursor-pointer transition-transform hover:scale-105"
+                                onClick={() => {
+                                  // Abre a imagem em nova aba
+                                  const newWindow = window.open();
+                                  if (newWindow) {
+                                    newWindow.document.write(`<img src="data:${file.type};base64,${file.data}" style="max-width:100%;max-height:100%;" />`);
+                                  }
+                                }}
+                              />
+                              <div className="absolute bottom-0 left-0 right-0 bg-black/60 backdrop-blur-sm p-2">
+                                <div className="flex items-center gap-1 text-white text-xs">
+                                  <Image size={12} />
+                                  <span className="truncate">{file.name}</span>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            // Card melhorado para outros arquivos
+                            <div className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-3 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors border border-gray-200 dark:border-gray-600">
+                              <div className="flex-shrink-0">
+                                {file.type === 'application/pdf' ? (
+                                  <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                    <File size={16} className="text-red-600" />
+                                  </div>
+                                ) : (
+                                  <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                                    <File size={16} className="text-gray-500" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                  {file.name}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400">
+                                  {file.type === 'application/pdf' ? 'PDF' : 'Arquivo'}
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )) : 
+                      // Fallback melhorado para arquivos sem dados
+                      message.attachments?.map((attachment, index) => (
+                        <div key={index} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-3 border border-gray-200 dark:border-gray-600">
+                          <div className="flex-shrink-0">
+                            {attachment.type.startsWith('image/') ? (
+                              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
+                                <Image size={16} className="text-blue-600" />
+                              </div>
+                            ) : attachment.type === 'application/pdf' ? (
+                              <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
+                                <File size={16} className="text-red-600" />
+                              </div>
+                            ) : (
+                              <div className="w-8 h-8 bg-gray-200 dark:bg-gray-600 rounded-lg flex items-center justify-center">
+                                <File size={16} className="text-gray-500" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                              {attachment.name}
+                            </p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {attachment.type.startsWith('image/') ? 'Imagem' : 
+                               attachment.type === 'application/pdf' ? 'PDF' : 'Arquivo'}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -217,6 +318,10 @@ export default function ChatArea({
   const [editingContent, setEditingContent] = useState('')
   const [retryTargetId, setRetryTargetId] = useState<string | null>(null)
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null)
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([])
+  const [isDragOver, setIsDragOver] = useState(false)
+  const [dragDepth, setDragDepth] = useState(0)
+  const [isFirstMessage, setIsFirstMessage] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const messagesContainerRef = useRef<HTMLDivElement>(null)
   const streamTimeoutRef = useRef<number | null>(null)
@@ -230,6 +335,9 @@ export default function ChatArea({
   useEffect(() => {
     // Limpa streaming ativo ao trocar de conversa
     cleanupStreaming()
+    
+    // Limpa arquivos anexados ao trocar de conversa
+    setAttachedFiles([])
     
     if (conversationId) {
       fetchMessages()
@@ -314,7 +422,9 @@ export default function ChatArea({
         content: msg.content,
         timestamp: msg.timestamp,
         type: msg.message_type || 'text',
-        imageData: msg.image_data
+        imageData: msg.image_data,
+        attachments: msg.attachments ? JSON.parse(msg.attachments) : null,
+        filesData: msg.files_data ? JSON.parse(msg.files_data) : null
       }))
       setMessages(mappedMessages)
       // Scroll instantâneo ao final após carregar mensagens - aguarda renderização
@@ -343,11 +453,24 @@ export default function ChatArea({
   }
 
   const sendMessage = async () => {
-    if (!input.trim()) return
+    if (!input.trim() && attachedFiles.length === 0) return
 
     const messageContent = input.trim()
+    const messageCopy = messageContent
+    const filesCopy = [...attachedFiles]
     setInput('')
+    setAttachedFiles([])
     setLoading(true)
+
+    // Converte arquivos para base64 para mostrar imediatamente na interface
+    let filesDataForUI: Array<{name: string, type: string, size: number, data: string}> = []
+    if (filesCopy.length > 0) {
+      try {
+        filesDataForUI = await convertFilesToBase64(filesCopy)
+      } catch (error) {
+        console.error('Error converting files to base64:', error)
+      }
+    }
     // Se for retry in-place, marca bolha alvo como "digitando"
     if (retryTargetId) {
       setTypingMessageId(retryTargetId)
@@ -361,9 +484,10 @@ export default function ChatArea({
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: messageContent,
+      content: messageContent || (filesCopy.length > 0 ? `[${filesCopy.length} arquivo(s) anexado(s)]` : ''),
       timestamp: new Date().toISOString(),
-      type: isImageMode ? 'image' : 'text'
+      type: isImageMode ? 'image' : 'text',
+      filesData: filesDataForUI.length > 0 ? filesDataForUI : undefined
     }
 
     const currentModel = isImageMode ? selectedImageModel : selectedTextModel
@@ -376,15 +500,35 @@ export default function ChatArea({
           setMessages(prev => [...prev, userMessage])
         }
         
-        const response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            content: messageContent,
-            model: currentModel,
-            type: isImageMode ? 'image' : 'text'
-          })
-        })
+        // Prepara dados para envio (com ou sem arquivos)
+        let response;
+        if (filesCopy.length > 0) {
+          // Envia com FormData se houver arquivos
+          const formData = new FormData();
+          formData.append('content', messageCopy || '');
+          formData.append('model', currentModel);
+          formData.append('type', isImageMode ? 'image' : 'text');
+          
+          filesCopy.forEach((file) => {
+            formData.append('files', file);
+          });
+
+          response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`, {
+            method: 'POST',
+            body: formData
+          });
+        } else {
+          // Envia JSON se não houver arquivos
+          response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              content: messageCopy,
+              model: currentModel,
+              type: isImageMode ? 'image' : 'text'
+            })
+          });
+        }
 
         if (response.ok) {
           const data = await response.json()
@@ -426,7 +570,7 @@ export default function ChatArea({
               ...m,
               error: true,
               content: 'Erro ao gerar resposta',
-              retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+              retryData: { content: messageCopy, model: currentModel, type: isImageMode ? 'image' : 'text' }
             } : m))
           } else {
             const errMsg: Message = {
@@ -435,13 +579,14 @@ export default function ChatArea({
               content: 'Erro ao gerar resposta',
               timestamp: new Date().toISOString(),
               error: true,
-              retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+              retryData: { content: messageCopy, model: currentModel, type: isImageMode ? 'image' : 'text' }
             }
             setMessages(prev => [...prev, errMsg])
           }
         }
       } else {
         // Para chat sem contexto, primeiro cria uma conversa automaticamente
+        setIsFirstMessage(true) // Marca que é primeira mensagem
         try {
           const createResponse = await fetch('http://localhost:3000/api/conversations', {
             method: 'POST',
@@ -460,18 +605,37 @@ export default function ChatArea({
             // Envia a mensagem para a nova conversa
             setMessages([userMessage])
             
-            const response = await fetch(`http://localhost:3000/api/conversations/${newConv.id}/messages`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                content: messageContent,
-                model: currentModel,
-                type: isImageMode ? 'image' : 'text'
-              })
-            })
+            // Prepara dados para envio na nova conversa
+            let response;
+            if (filesCopy.length > 0) {
+              const formData = new FormData();
+              formData.append('content', messageCopy || '');
+              formData.append('model', currentModel);
+              formData.append('type', isImageMode ? 'image' : 'text');
+              
+              filesCopy.forEach((file) => {
+                formData.append('files', file);
+              });
+
+              response = await fetch(`http://localhost:3000/api/conversations/${newConv.id}/messages`, {
+                method: 'POST',
+                body: formData
+              });
+            } else {
+              response = await fetch(`http://localhost:3000/api/conversations/${newConv.id}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                  content: messageCopy,
+                  model: currentModel,
+                  type: isImageMode ? 'image' : 'text'
+                })
+              });
+            }
 
             if (response.ok) {
               const data = await response.json()
+              setIsFirstMessage(false) // Desmarca a flag quando a resposta chega
               const assistantMessage: Message = {
                 id: `assistant-${Date.now()}`,
                 role: 'assistant',
@@ -500,12 +664,13 @@ export default function ChatArea({
                 }, data.assistant_response.length * 6 + 500)
               }
             } else {
+              setIsFirstMessage(false) // Desmarca mesmo em caso de erro
               if (retryTargetId) {
                 setMessages(prev => prev.map(m => m.id === retryTargetId ? {
                   ...m,
                   error: true,
                   content: 'Erro ao gerar resposta',
-                  retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+                  retryData: { content: messageCopy, model: currentModel, type: isImageMode ? 'image' : 'text' }
                 } : m))
               } else {
                 const errMsg: Message = {
@@ -514,7 +679,7 @@ export default function ChatArea({
                   content: 'Erro ao gerar resposta',
                   timestamp: new Date().toISOString(),
                   error: true,
-                  retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+                  retryData: { content: messageCopy, model: currentModel, type: isImageMode ? 'image' : 'text' }
                 }
                 setMessages(prev => [...prev, errMsg])
               }
@@ -525,15 +690,33 @@ export default function ChatArea({
           // Fallback para chat simples
           setMessages([userMessage])
           
-          const response = await fetch('http://localhost:3000/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              message: messageContent,
-              model: currentModel,
-              type: isImageMode ? 'image' : 'text'
-            })
-          })
+          // Fallback para chat simples
+          let response;
+          if (filesCopy.length > 0) {
+            const formData = new FormData();
+            formData.append('message', messageCopy || '');
+            formData.append('model', currentModel);
+            formData.append('type', isImageMode ? 'image' : 'text');
+            
+            filesCopy.forEach((file) => {
+              formData.append('files', file);
+            });
+
+            response = await fetch('http://localhost:3000/api/chat', {
+              method: 'POST',
+              body: formData
+            });
+          } else {
+            response = await fetch('http://localhost:3000/api/chat', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                message: messageCopy,
+                model: currentModel,
+                type: isImageMode ? 'image' : 'text'
+              })
+            });
+          }
           if (response.ok) {
             const data = await response.json()
             const assistantMessage: Message = {
@@ -570,7 +753,7 @@ export default function ChatArea({
                 ...m,
                 error: true,
                 content: 'Erro ao gerar resposta',
-                retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+                retryData: { content: messageCopy, model: currentModel, type: isImageMode ? 'image' : 'text' }
               } : m))
             } else {
               const errMsg: Message = {
@@ -579,7 +762,7 @@ export default function ChatArea({
                 content: 'Erro ao gerar resposta',
                 timestamp: new Date().toISOString(),
                 error: true,
-                retryData: { content: messageContent, model: currentModel, type: isImageMode ? 'image' : 'text' }
+                retryData: { content: messageCopy, model: currentModel, type: isImageMode ? 'image' : 'text' }
               }
               setMessages(prev => [...prev, errMsg])
             }
@@ -609,6 +792,7 @@ export default function ChatArea({
       }
     } finally {
       setLoading(false)
+      setIsFirstMessage(false) // Garante que a flag seja desmarcada em qualquer caso
       if (retryTargetId) {
         // Finaliza estado de digitação da bolha alvo se algo ficou pendente
         setTypingMessageId(null)
@@ -762,6 +946,7 @@ export default function ChatArea({
   const currentSelectedModel = isImageMode ? selectedImageModel : selectedTextModel
   const selectedModelData = currentModels.find(m => m.id === currentSelectedModel)
   const modelSelectorRef = useRef<HTMLDivElement | null>(null)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -776,8 +961,146 @@ export default function ChatArea({
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [modelSelectorRef])
 
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    setDragDepth(prev => prev + 1)
+    
+    // Só verifica se o modelo suporta arquivos quando entra pela primeira vez
+    if (dragDepth === 0) {
+      const currentModel = textModels.find(m => m.id === selectedTextModel)
+      if (currentModel?.supportsFiles && e.dataTransfer.items) {
+        // Verifica se há arquivos sendo arrastados
+        const hasFiles = Array.from(e.dataTransfer.items).some(item => item.kind === 'file')
+        if (hasFiles) {
+          setIsDragOver(true)
+        }
+      }
+    }
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    
+    setDragDepth(prev => {
+      const newDepth = prev - 1
+      if (newDepth <= 0) {
+        setIsDragOver(false)
+        return 0
+      }
+      return newDepth
+    })
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragOver(false)
+    setDragDepth(0)
+
+    const files = Array.from(e.dataTransfer.files)
+    const currentModel = textModels.find(m => m.id === selectedTextModel)
+    
+    if (!currentModel?.supportsFiles) return
+
+    const validFiles = files.filter(file => 
+      currentModel.supportedFileTypes?.includes(file.type)
+    )
+
+    if (validFiles.length > 0) {
+      setAttachedFiles(prev => {
+        const existingNames = prev.map(f => f.name)
+        const newFiles = validFiles.filter(file => !existingNames.includes(file.name))
+        const duplicates = validFiles.length - newFiles.length
+        
+        if (duplicates > 0) {
+          console.log(`${duplicates} arquivo(s) já anexado(s) anteriormente`)
+        }
+        
+        return [...prev, ...newFiles]
+      })
+    }
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || [])
+    const currentModel = textModels.find(m => m.id === selectedTextModel)
+    
+    if (!currentModel?.supportsFiles) return
+
+    const validFiles = files.filter(file => 
+      currentModel.supportedFileTypes?.includes(file.type)
+    )
+
+    if (validFiles.length > 0) {
+      setAttachedFiles(prev => {
+        const existingNames = prev.map(f => f.name)
+        const newFiles = validFiles.filter(file => !existingNames.includes(file.name))
+        const duplicates = validFiles.length - newFiles.length
+        
+        if (duplicates > 0) {
+          console.log(`${duplicates} arquivo(s) já anexado(s) anteriormente`)
+        }
+        
+        return [...prev, ...newFiles]
+      })
+    }
+
+    // Limpa o valor do input para permitir selecionar o mesmo arquivo novamente
+    if (e.target) {
+      e.target.value = ''
+    }
+  }
+
+  const removeFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const getFileIcon = (file: File) => {
+    if (file.type.startsWith('image/')) {
+      return <Image size={16} className="text-blue-500" />
+    } else if (file.type === 'application/pdf') {
+      return <File size={16} className="text-red-500" />
+    }
+    return <File size={16} className="text-gray-500" />
+  }
+
+  const convertFilesToBase64 = async (files: File[]): Promise<Array<{name: string, type: string, size: number, data: string}>> => {
+    const promises = files.map(file => {
+      return new Promise<{name: string, type: string, size: number, data: string}>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const base64 = reader.result as string;
+          const data = base64.split(',')[1]; // Remove o prefixo data:...;base64,
+          resolve({
+            name: file.name,
+            type: file.type,
+            size: file.size,
+            data
+          });
+        };
+        reader.readAsDataURL(file);
+      });
+    });
+    return Promise.all(promises);
+  }
+
   return (
-    <div className="flex flex-col flex-1 h-full bg-gray-50 dark:bg-dark-900 relative">
+    <div 
+      className="flex flex-col flex-1 h-full relative bg-gray-50 dark:bg-dark-900"
+      onDragEnter={handleDragEnter}
+      onDragLeave={handleDragLeave}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    >
       <div className="p-4 bg-gray-50 dark:bg-dark-900">
         <div className="flex items-center gap-3">
           {/* Botão toggle sidebar - ao lado do seletor quando fechada */}
@@ -825,8 +1148,11 @@ export default function ChatArea({
             >
               <Sparkles size={16} className="text-primary-600 dark:text-primary-400" />
               <div className="text-left">
-                <div className="text-xs font-medium text-gray-900 dark:text-white">
+                <div className="text-xs font-medium text-gray-900 dark:text-white flex items-center gap-1">
                   {selectedModelData?.name || currentSelectedModel}
+                  {selectedModelData?.supportsFiles && (
+                    <Paperclip size={12} className="text-blue-600 dark:text-blue-400" />
+                  )}
                 </div>
               </div>
               {selectedModelData?.badge && (
@@ -857,8 +1183,18 @@ export default function ChatArea({
                   >
                     <div className="flex items-center justify-between">
                       <div>
+<<<<<<< HEAD
                         <div className="font-medium text-sm text-white">{model.name}</div>
                         <div className="text-xs text-emerald-200 mt-0.5">{model.description}</div>
+=======
+                        <div className="font-medium text-sm text-gray-900 dark:text-white flex items-center gap-1">
+                          {model.name}
+                          {model.supportsFiles && (
+                            <Paperclip size={12} className="text-blue-600 dark:text-blue-400" />
+                          )}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{model.description}</div>
+>>>>>>> ed5bde3 (feat: imagens + documentos)
                       </div>
                       {model.badge && (
                         <span className="text-xs px-1.5 py-0.5 bg-emerald-800/30 text-emerald-100 rounded-md font-medium">
@@ -913,8 +1249,8 @@ export default function ChatArea({
               />
             ))}
             
-            {loading && !streamingMessage && !retryTargetId && (
-              <div className="flex justify-start">
+            {(loading || isFirstMessage) && !streamingMessage && !retryTargetId && (
+              <div className="flex justify-start animate-slide-up">
                 <div className="flex gap-3 max-w-4xl">
                   <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-dark-700 dark:to-dark-600 flex items-center justify-center">
                     <Bot size={16} className="text-gray-700 dark:text-gray-300" />
@@ -948,11 +1284,64 @@ export default function ChatArea({
         )}
       </div>
 
+      {/* Drag and Drop Overlay - Simplificado */}
+      {isDragOver && (
+        <div className="absolute inset-0 z-50 pointer-events-none">
+          {/* Background overlay simples */}
+          <div className="absolute inset-0 bg-primary-500/20 backdrop-blur-sm"></div>
+          
+          {/* Área central de drop */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            <div className="bg-white/95 dark:bg-dark-800/95 backdrop-blur-xl rounded-2xl p-8 text-center border-2 border-dashed border-primary-500 shadow-xl">
+              {/* Ícone simples */}
+              <div className="mb-4">
+                <div className="bg-primary-500 rounded-full p-4 inline-block">
+                  <Paperclip size={32} className="text-white" />
+                </div>
+              </div>
+              
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                Solte seus arquivos aqui
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Imagens e PDFs suportados
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="relative">
         <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-gray-50 via-gray-50/60 to-transparent dark:from-dark-900 dark:via-dark-900/60 dark:to-transparent pointer-events-none"></div>
         <div className="relative z-10 p-4">
           <div className="max-w-4xl mx-auto">
-            <div className="relative bg-white/90 dark:bg-dark-800/90 backdrop-blur-xl rounded-2xl border border-gray-200/40 dark:border-dark-600/40 shadow-2xl shadow-black/10 dark:shadow-black/30">
+            <div className={`relative backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all duration-300 ${
+              isDragOver && selectedModelData?.supportsFiles && !isImageMode
+                ? 'bg-white/95 dark:bg-dark-800/95 border-2 border-dashed border-primary-400/80 dark:border-primary-500/80'
+                : 'bg-white/90 dark:bg-dark-800/90 border border-gray-200/40 dark:border-dark-600/40'
+            }`}>
+              {/* Preview de arquivos anexados */}
+              {attachedFiles.length > 0 && (
+                <div className="p-3 border-b border-gray-200/60 dark:border-dark-600/60">
+                  <div className="flex flex-wrap gap-2">
+                    {attachedFiles.map((file, index) => (
+                      <div key={index} className="flex items-center gap-2 bg-gray-100 dark:bg-dark-700 rounded-lg px-3 py-2 text-sm">
+                        {getFileIcon(file)}
+                        <span className="text-gray-900 dark:text-white max-w-32 truncate">
+                          {file.name}
+                        </span>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-gray-500 hover:text-red-500 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="flex items-end gap-2 p-3">
                 <div className="flex-1 relative">
                   <textarea
@@ -960,7 +1349,13 @@ export default function ChatArea({
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder={isImageMode ? "Descreva a imagem que deseja gerar..." : "Digite sua mensagem..."}
+                    placeholder={
+                      isImageMode 
+                        ? "Descreva a imagem que deseja gerar..." 
+                        : selectedModelData?.supportsFiles 
+                          ? "Digite sua mensagem ou arraste arquivos aqui..." 
+                          : "Digite sua mensagem..."
+                    }
                     className="w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:outline-none text-sm leading-relaxed max-h-28 min-h-[44px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-dark-600"
                     rows={1}
                     onInput={(e) => {
@@ -970,6 +1365,27 @@ export default function ChatArea({
                     }}
                   />
                 </div>
+                
+                {/* Botão de anexar arquivos */}
+                {selectedModelData?.supportsFiles && !isImageMode && (
+                  <>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      multiple
+                      accept={selectedModelData.supportedFileTypes?.join(',')}
+                      onChange={handleFileSelect}
+                      className="hidden"
+                    />
+                    <button
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex-shrink-0 w-11 h-11 bg-gray-100 hover:bg-gray-200 dark:bg-dark-700 dark:hover:bg-dark-600 text-gray-600 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center justify-center"
+                      title="Anexar arquivo"
+                    >
+                      <Paperclip size={16} />
+                    </button>
+                  </>
+                )}
                 
                 {isStreaming || (loading && !streamingMessage) ? (
                   <button
@@ -982,7 +1398,7 @@ export default function ChatArea({
                 ) : (
                   <button
                     onClick={sendMessage}
-                    disabled={!input.trim()}
+                    disabled={!input.trim() && attachedFiles.length === 0}
                     className="flex-shrink-0 w-11 h-11 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-dark-600 dark:disabled:to-dark-700 text-white disabled:text-gray-500 dark:disabled:text-gray-400 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:shadow-md flex items-center justify-center group disabled:cursor-not-allowed"
                     title="Enviar mensagem"
                   >

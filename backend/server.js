@@ -2,6 +2,7 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const multer = require('multer');
 const Database = require('./database');
 const GeminiService = require('./gemini');
 const createRoutes = require('./routes');
@@ -15,7 +16,23 @@ if (!process.env.GEMINI_API_KEY) {
 }
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+// Configuração do multer para upload de arquivos
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB
+  },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Tipo de arquivo não suportado'), false);
+    }
+  }
+});
 
 // Servir imagens estáticas
 app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
@@ -23,7 +40,7 @@ app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
 const database = new Database();
 const geminiService = new GeminiService(process.env.GEMINI_API_KEY);
 
-app.use('/api', createRoutes(database, geminiService));
+app.use('/api', createRoutes(database, geminiService, upload));
 
 app.get('/', (req, res) => {
   res.json({ 
