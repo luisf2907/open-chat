@@ -340,7 +340,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => setEditingModel(editingModel === model.id ? null : model.id)}
@@ -349,7 +349,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                         >
                           <Edit3 size={16} className="text-gray-500 dark:text-gray-400" />
                         </button>
-                        
+
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"
@@ -359,7 +359,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                           />
                           <span className="text-sm text-gray-700 dark:text-gray-300">Ativo</span>
                         </label>
-                        
+
                         <button
                           onClick={() => setDefaultModel(activeTab, model.id)}
                           disabled={model.default}
@@ -371,7 +371,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                         >
                           {model.default ? 'Padrão' : 'Definir como padrão'}
                         </button>
-                        
+
                         <button
                           onClick={() => deleteModel(activeTab, model.id)}
                           className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
