@@ -6,13 +6,16 @@ Uma aplicação de chat moderna e elegante com IA integrada, construída com Rea
 
 - 🎨 **Interface Moderna**: Design inspirado no ChatGPT/Gemini com tema dark/light
 - 💬 **Chat Inteligente**: Integração com Google Gemini AI
+- 🖼️ **Geração de Imagens**: Suporte completo ao Imagen 4 e Gemini Flash Image
+- 🔄 **Modo Dual**: Alterne entre geração de texto e imagens facilmente
 - 📝 **Edição de Mensagens**: Edite suas mensagens e receba novas respostas
 - 🔄 **Efeito Typewriter**: Animação de digitação em tempo real
 - 📱 **Responsivo**: Interface adaptável para desktop e mobile
-- 💾 **Histórico Persistente**: Conversas salvas em SQLite
+- 💾 **Histórico Persistente**: Conversas e imagens salvas em SQLite
 - 🌙 **Tema Dark/Light**: Alternância automática e manual de temas
 - ✍️ **Markdown**: Suporte completo com syntax highlighting
 - 🎯 **Scroll Inteligente**: Acompanha automaticamente as mensagens sendo digitadas
+- 🗄️ **Persistência de Imagens**: Imagens armazenadas em Base64 no banco de dados
 
 ## 🚀 Tecnologias Utilizadas
 
@@ -26,8 +29,9 @@ Uma aplicação de chat moderna e elegante com IA integrada, construída com Rea
 ### Backend
 - **Node.js** com Express
 - **SQLite3** para banco de dados
-- **Google Generative AI** (Gemini)
+- **Google GenAI** para texto e imagens (Gemini + Imagen 4)
 - **CORS** para requisições cross-origin
+- **Armazenamento Base64** para persistência de imagens
 
 ## 📋 Pré-requisitos
 
@@ -108,24 +112,35 @@ npm start     # Roda em produção
 - Clique em "Nova conversa" na sidebar
 - Ou comece digitando diretamente
 
-### 2. **Selecionar Modelo de IA**
-- Use o seletor no topo para escolher o modelo
-- Modelos disponíveis: Gemini Flash, Pro, etc.
+### 2. **Alternar entre Texto e Imagem**
+- Use os botões **"Texto"** e **"Imagem"** na barra superior
+- **Modo Texto**: Para conversas normais com IA
+- **Modo Imagem**: Para gerar imagens com Imagen 4 ou Gemini Flash Image
 
-### 3. **Editar Mensagens**
+### 3. **Selecionar Modelos de IA**
+- **Para Texto**: Gemini 2.5 Flash, Gemini 2.5 Pro
+- **Para Imagem**: Imagen 4, Gemini 2.0 Flash Image
+- O seletor muda automaticamente conforme o modo ativo
+
+### 4. **Gerar Imagens**
+- Ative o modo **"Imagem"**
+- Digite uma descrição detalhada (ex: "um gato laranja comendo peixe")
+- As imagens são salvas permanentemente no banco de dados
+
+### 5. **Editar Mensagens**
 - Passe o mouse sobre sua mensagem
 - Clique no ícone de edição que aparece
 - Edite o texto e clique "Salvar"
 - Todas as mensagens seguintes serão removidas e uma nova resposta será gerada
 
-### 4. **Alternar Temas**
+### 6. **Alternar Temas**
 - Use o botão de sol/lua na sidebar
 - Ou deixe detectar automaticamente o tema do sistema
 
-### 5. **Gerenciar Conversas**
+### 7. **Gerenciar Conversas**
 - Navegue pelo histórico na sidebar
 - Delete conversas com o ícone da lixeira
-- Conversas são salvas automaticamente
+- Conversas e imagens são salvas automaticamente
 
 ## 📁 Estrutura do Projeto
 
@@ -160,18 +175,49 @@ Edite o arquivo `backend/models.json` para adicionar/remover modelos:
 
 ```json
 {
-  "models": [
+  "textModels": [
     {
       "id": "gemini-2.5-flash",
       "name": "Gemini 2.5 Flash",
       "description": "Modelo rápido e eficiente",
-      "badge": "Rápido",
+      "badge": "NOVO",
+      "type": "text",
+      "enabled": true,
+      "default": true
+    }
+  ],
+  "imageModels": [
+    {
+      "id": "imagen-4.0-generate-001",
+      "name": "Imagen 4",
+      "description": "Geração de imagens com IA",
+      "badge": "NOVO",
+      "type": "image",
       "enabled": true,
       "default": true
     }
   ]
 }
 ```
+
+## 🖼️ Recursos de Geração de Imagens
+
+### **Modelos Suportados:**
+- **Imagen 4** - Modelo mais recente do Google para geração de imagens
+- **Gemini 2.0 Flash Image** - Modelo gratuito com geração de imagens
+
+### **Características:**
+- ✅ **Persistência Total**: Imagens salvas em Base64 no banco SQLite
+- ✅ **Sem Dependências Externas**: Não precisa de armazenamento de arquivos
+- ✅ **Histórico Completo**: Imagens aparecem sempre que você voltar à conversa
+- ✅ **Interface Intuitiva**: Botões dedicados para alternar entre texto/imagem
+- ✅ **Seletor Dinâmico**: Modelos mudam automaticamente conforme o modo
+
+### **Como Funciona:**
+1. **Geração**: IA gera a imagem via API do Google
+2. **Armazenamento**: Imagem convertida para Base64 e salva no SQLite
+3. **Exibição**: Frontend renderiza via `data:image/png;base64,${data}`
+4. **Persistência**: Imagem permanece salva para sempre no histórico
 
 ### Variáveis de Ambiente Adicionais
 
@@ -205,6 +251,12 @@ rm -rf frontend/node_modules frontend/package-lock.json
 npm run install:all
 ```
 
+### Problemas com Geração de Imagens
+- **Erro "modelo não encontrado"**: Verifique se está usando Imagen 4 ou Gemini Flash Image
+- **Imagens não aparecem**: Verifique se o banco de dados tem as colunas `message_type` e `image_data`
+- **API Key inválida**: Confirme se a chave tem permissões para geração de imagens
+- **Imagem muito grande**: O Base64 pode causar lentidão em imagens muito grandes
+
 ## 🤝 Contribuindo
 
 1. Fork o projeto
@@ -219,7 +271,7 @@ Este projeto está sob a licença ISC. Veja o arquivo `LICENSE` para detalhes.
 
 ## 👥 Autor
 
-**Luis Fernando Werneck** - [@luisf2907](https://github.com/luisf2907)
+**Luis Felipe Werneck** - [@luisf2907](https://github.com/luisf2907)
 
 ---
 

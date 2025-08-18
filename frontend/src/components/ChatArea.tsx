@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Send, ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, PanelRightClose, ArrowDown, Edit3, Check, X } from 'lucide-react'
+import { Send, ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, PanelRightClose, ArrowDown, Edit3, Check, X, Image, FileText } from 'lucide-react'
 import { useTypewriter } from '../hooks/useTypewriter'
 import TypingIndicator from './TypingIndicator'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -9,6 +9,9 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp: string
+  imageUrl?: string
+  imageData?: string
+  type?: 'text' | 'image'
 }
 
 interface Model {
@@ -18,6 +21,7 @@ interface Model {
   badge?: string
   enabled: boolean
   default: boolean
+  type: 'text' | 'image'
 }
 
 interface ChatAreaProps {
@@ -27,6 +31,11 @@ interface ChatAreaProps {
   sidebarOpen: boolean
   onToggleSidebar: () => void
   onNewConversation: (conversationId: string) => void
+}
+
+interface ModelGroup {
+  textModels: Model[]
+  imageModels: Model[]
 }
 
 function MessageBubble({ 
@@ -112,6 +121,19 @@ function MessageBubble({
                   </button>
                 </div>
               </div>
+            ) : message.type === 'image' && (message.imageData || message.imageUrl) ? (
+              <div className="space-y-2">
+                <img 
+                  src={message.imageData ? `data:image/png;base64,${message.imageData}` : `http://localhost:3000${message.imageUrl}`} 
+                  alt="Imagem gerada"
+                  className="max-w-sm w-80 h-auto rounded-lg shadow-md"
+                />
+                {message.content && (
+                  <div className="text-sm opacity-80">
+                    {message.content}
+                  </div>
+                )}
+              </div>
             ) : message.role === 'assistant' ? (
               <div>
                 <MarkdownRenderer content={content} />
@@ -153,8 +175,12 @@ export default function ChatArea({
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
-  const [models, setModels] = useState<Model[]>([])
+  const [textModels, setTextModels] = useState<Model[]>([])
+  const [imageModels, setImageModels] = useState<Model[]>([])
   const [showModelSelector, setShowModelSelector] = useState(false)
+  const [isImageMode, setIsImageMode] = useState(false)
+  const [selectedTextModel, setSelectedTextModel] = useState('')
+  const [selectedImageModel, setSelectedImageModel] = useState('')
   const [streamingMessage, setStreamingMessage] = useState<Message | null>(null)
   const [isStreaming, setIsStreaming] = useState(false)
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
@@ -222,8 +248,19 @@ export default function ChatArea({
   const fetchModels = async () => {
     try {
       const response = await fetch('http://localhost:3000/api/models')
-      const data = await response.json()
-      setModels(data.models)
+      const data: ModelGroup = await response.json()
+      setTextModels(data.textModels)
+      setImageModels(data.imageModels)
+      
+      // Define os modelos padrão se não estiverem definidos
+      if (!selectedTextModel) {
+        const defaultText = data.textModels.find(m => m.default)?.id || data.textModels[0]?.id
+        setSelectedTextModel(defaultText)
+      }
+      if (!selectedImageModel) {
+        const defaultImage = data.imageModels.find(m => m.default)?.id || data.imageModels[0]?.id
+        setSelectedImageModel(defaultImage)
+      }
     } catch (error) {
       console.error('Error fetching models:', error)
     }
@@ -235,7 +272,15 @@ export default function ChatArea({
     try {
       const response = await fetch(`http://localhost:3000/api/conversations/${conversationId}/messages`)
       const data = await response.json()
-      setMessages(data)
+      const mappedMessages = data.map((msg: any) => ({
+        id: msg.id.toString(),
+        role: msg.role,
+        content: msg.content,
+        timestamp: msg.timestamp,
+        type: msg.message_type || 'text',
+        imageData: msg.image_data
+      }))
+      setMessages(mappedMessages)
     } catch (error) {
       console.error('Error fetching messages:', error)
     }
@@ -269,8 +314,12 @@ export default function ChatArea({
       id: `user-${Date.now()}`,
       role: 'user',
       content: messageContent,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      type: isImageMode ? 'image' : 'text'
     }
+
+    const currentModel = isImageMode ? selectedImageModel : selectedTextModel
+
 
     try {
       if (conversationId) {
@@ -281,7 +330,8 @@ export default function ChatArea({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             content: messageContent,
-            model: selectedModel 
+            model: currentModel,
+            type: isImageMode ? 'image' : 'text'
           })
         })
 
@@ -290,8 +340,11 @@ export default function ChatArea({
           const assistantMessage: Message = {
             id: `assistant-${Date.now()}`,
             role: 'assistant',
-            content: data.assistant_response,
-            timestamp: new Date().toISOString()
+            content: data.assistant_response || '',
+            timestamp: new Date().toISOString(),
+            type: isImageMode ? 'image' : 'text',
+            imageUrl: data.imageUrl,
+            imageData: data.imageData
           }
           
           setStreamingMessage(assistantMessage)
@@ -325,7 +378,8 @@ export default function ChatArea({
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ 
                 content: messageContent,
-                model: selectedModel 
+                model: currentModel,
+                type: isImageMode ? 'image' : 'text'
               })
             })
 
@@ -335,7 +389,10 @@ export default function ChatArea({
                 id: `assistant-${Date.now()}`,
                 role: 'assistant',
                 content: data.assistant_response,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                type: isImageMode ? 'image' : 'text',
+                imageUrl: data.imageUrl,
+                imageData: data.imageData
               }
               
               setStreamingMessage(assistantMessage)
@@ -359,7 +416,8 @@ export default function ChatArea({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
               message: messageContent,
-              model: selectedModel 
+              model: currentModel,
+              type: isImageMode ? 'image' : 'text'
             })
           })
 
@@ -368,7 +426,9 @@ export default function ChatArea({
             id: `assistant-${Date.now()}`,
             role: 'assistant',
             content: data.response,
-            timestamp: new Date().toISOString()
+            timestamp: new Date().toISOString(),
+            type: isImageMode ? 'image' : 'text',
+            imageData: data.imageData
           }
           
           setStreamingMessage(assistantMessage)
@@ -482,7 +542,9 @@ export default function ChatArea({
     }
   }
 
-  const selectedModelData = models.find(m => m.id === selectedModel)
+  const currentModels = isImageMode ? imageModels : textModels
+  const currentSelectedModel = isImageMode ? selectedImageModel : selectedTextModel
+  const selectedModelData = currentModels.find(m => m.id === currentSelectedModel)
 
   return (
     <div className="flex flex-col flex-1 h-full bg-gray-50 dark:bg-dark-900 relative">
@@ -499,6 +561,32 @@ export default function ChatArea({
             </button>
           )}
           
+          {/* Botões de modo */}
+          <div className="flex bg-white/40 dark:bg-dark-800/40 backdrop-blur-sm rounded-lg border border-gray-200/60 dark:border-dark-600/60 p-1">
+            <button
+              onClick={() => setIsImageMode(false)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                !isImageMode 
+                  ? 'bg-primary-600 text-white shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-dark-700/60'
+              }`}
+            >
+              <FileText size={14} />
+              Texto
+            </button>
+            <button
+              onClick={() => setIsImageMode(true)}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all duration-200 ${
+                isImageMode 
+                  ? 'bg-primary-600 text-white shadow-sm' 
+                  : 'text-gray-600 dark:text-gray-300 hover:bg-white/60 dark:hover:bg-dark-700/60'
+              }`}
+            >
+              <Image size={14} />
+              Imagem
+            </button>
+          </div>
+
           {/* Seletor de modelo */}
           <div className="relative">
             <button
@@ -508,7 +596,7 @@ export default function ChatArea({
               <Sparkles size={16} className="text-primary-600 dark:text-primary-400" />
               <div className="text-left">
                 <div className="text-xs font-medium text-gray-900 dark:text-white">
-                  {selectedModelData?.name || selectedModel}
+                  {selectedModelData?.name || currentSelectedModel}
                 </div>
               </div>
               {selectedModelData?.badge && (
@@ -521,15 +609,20 @@ export default function ChatArea({
 
             {showModelSelector && (
               <div className="absolute top-full left-0 mt-1 w-72 bg-white/95 dark:bg-dark-800/95 backdrop-blur-xl border border-gray-200/60 dark:border-dark-600/60 rounded-xl shadow-xl z-30 overflow-hidden">
-                {models.map((model) => (
+                {currentModels.map((model) => (
                   <button
                     key={model.id}
                     onClick={() => {
-                      onModelChange(model.id)
+                      if (isImageMode) {
+                        setSelectedImageModel(model.id)
+                      } else {
+                        setSelectedTextModel(model.id)
+                        onModelChange(model.id)
+                      }
                       setShowModelSelector(false)
                     }}
                     className={`w-full text-left p-3 hover:bg-gray-50/80 dark:hover:bg-dark-700/80 transition-colors border-b border-gray-100/50 dark:border-dark-700/50 last:border-b-0 ${
-                      selectedModel === model.id ? 'bg-primary-50/80 dark:bg-primary-900/20' : ''
+                      currentSelectedModel === model.id ? 'bg-primary-50/80 dark:bg-primary-900/20' : ''
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -634,7 +727,7 @@ export default function ChatArea({
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
-                    placeholder="Digite sua mensagem..."
+                    placeholder={isImageMode ? "Descreva a imagem que deseja gerar..." : "Digite sua mensagem..."}
                     className="w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:outline-none text-sm leading-relaxed max-h-28 min-h-[44px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-dark-600"
                     rows={1}
                     onInput={(e) => {

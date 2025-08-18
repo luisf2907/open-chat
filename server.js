@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const Database = require('./database');
 const GeminiService = require('./gemini');
 const createRoutes = require('./routes');
@@ -15,6 +16,9 @@ if (!process.env.GEMINI_API_KEY) {
 
 app.use(cors());
 app.use(express.json());
+
+// Servir imagens estáticas
+app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
 
 const database = new Database();
 const geminiService = new GeminiService(process.env.GEMINI_API_KEY);

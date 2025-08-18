@@ -1,5 +1,5 @@
 {
-  "models": [
+  "textModels": [
     {
       "id": "gemini-2.5-flash",
       "name": "Gemini 2.5 Flash",
@@ -17,6 +17,26 @@
       "type": "text",
       "enabled": true,
       "default": false
+    }
+  ],
+  "imageModels": [
+    {
+      "id": "imagen-4.0-generate-001",
+      "name": "Imagen 4",
+      "description": "Geração de imagens com IA",
+      "badge": "NOVO",
+      "type": "image",
+      "enabled": true,
+      "default": true
+    },
+    {
+      "id": "gemini-2.0-flash-preview-image-generation",
+      "name": "Gemini 2.0 Flash Image",
+      "description": "Geração de imagens com IA",
+      "badge": "FREE TIER",
+      "type": "image",
+      "enabled": true,
+      "default": true
     }
   ]
 }

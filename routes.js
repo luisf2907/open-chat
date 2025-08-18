@@ -12,9 +12,13 @@ function createRoutes(database, geminiService) {
       const modelsData = JSON.parse(fs.readFileSync(modelsPath, 'utf8'));
       
       // Filter only enabled models
-      const enabledModels = modelsData.models.filter(model => model.enabled);
+      const enabledTextModels = modelsData.textModels.filter(model => model.enabled);
+      const enabledImageModels = modelsData.imageModels.filter(model => model.enabled);
       
-      res.json({ models: enabledModels });
+      res.json({ 
+        textModels: enabledTextModels,
+        imageModels: enabledImageModels
+      });
     } catch (error) {
       console.error('Error loading models:', error);
       res.status(500).json({ error: 'Failed to load available models' });
@@ -58,28 +62,46 @@ function createRoutes(database, geminiService) {
   router.post('/conversations/:id/messages', async (req, res) => {
     try {
       const { id } = req.params;
-      const { content, model } = req.body;
+      const { content, model, type } = req.body;
+
 
       if (!content) {
         return res.status(400).json({ error: 'Message content is required' });
       }
 
       // Use provided model or default
-      const selectedModel = model || 'gemini-2.0-flash-exp';
+      const selectedModel = model || 'gemini-2.5-flash';
 
-      await database.addMessage(id, 'user', content);
+      await database.addMessage(id, 'user', content, type || 'text');
       
-      const messages = await database.getConversationMessages(id);
+      let assistantResponse;
+      let imageData = null;
+
+      if (type === 'image') {
+        // Geração de imagem
+        const imageResult = await geminiService.generateImage(content, selectedModel);
+        assistantResponse = imageResult.text || 'Imagem gerada com sucesso!';
+        imageData = imageResult.imageData;
+        
+        // Salva mensagem com dados da imagem
+        await database.addMessage(id, 'assistant', assistantResponse, 'image', imageData);
+      } else {
+        // Geração de texto normal
+        const messages = await database.getConversationMessages(id);
+        assistantResponse = await geminiService.generateResponse(messages, selectedModel);
+        
+        // Salva mensagem de texto
+        await database.addMessage(id, 'assistant', assistantResponse, 'text');
+      }
       
-      const response = await geminiService.generateResponse(messages, selectedModel);
-      
-      await database.addMessage(id, 'assistant', response);
       await database.updateConversationTimestamp(id);
 
       res.json({ 
         user_message: content,
-        assistant_response: response,
-        model_used: selectedModel
+        assistant_response: assistantResponse,
+        imageData,
+        model_used: selectedModel,
+        type: type || 'text'
       });
     } catch (error) {
       console.error('Chat error:', error);
@@ -128,7 +150,7 @@ function createRoutes(database, geminiService) {
       const messages = await database.getConversationMessages(conversationId);
       
       // Use provided model or default
-      const selectedModel = model || 'gemini-2.0-flash-exp';
+      const selectedModel = model || 'gemini-2.5-flash';
 
       // Generate new response from the AI
       const response = await geminiService.generateResponse(messages, selectedModel);
@@ -151,20 +173,34 @@ function createRoutes(database, geminiService) {
 
   router.post('/chat', async (req, res) => {
     try {
-      const { message, model } = req.body;
+      const { message, model, type } = req.body;
+
 
       if (!message) {
         return res.status(400).json({ error: 'Message is required' });
       }
 
       // Use provided model or default
-      const selectedModel = model || 'gemini-2.0-flash-exp';
+      const selectedModel = model || 'gemini-2.5-flash';
+      
+      let response;
+      let imageData = null;
 
-      const response = await geminiService.generateResponseSimple(message, selectedModel);
+      if (type === 'image') {
+        // Geração de imagem
+        const imageResult = await geminiService.generateImage(message, selectedModel);
+        response = imageResult.text || 'Imagem gerada com sucesso!';
+        imageData = imageResult.imageData;
+      } else {
+        // Geração de texto normal
+        response = await geminiService.generateResponseSimple(message, selectedModel);
+      }
       
       res.json({ 
         response,
-        model_used: selectedModel
+        imageData,
+        model_used: selectedModel,
+        type: type || 'text'
       });
     } catch (error) {
       console.error('Simple chat error:', error);

@@ -1,30 +1,26 @@
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const { GoogleGenAI, Modality } = require('@google/genai');
+const fs = require('fs');
+const path = require('path');
 
 class GeminiService {
   constructor(apiKey) {
-    this.genAI = new GoogleGenerativeAI(apiKey);
-    this.defaultModel = 'gemini-2.0-flash-exp';
-  }
-
-  getModel(modelName = this.defaultModel) {
-    return this.genAI.getGenerativeModel({ model: modelName });
+    this.genAI = new GoogleGenAI({ apiKey });
+    this.defaultModel = 'gemini-2.5-flash';
   }
 
   async generateResponse(messages, modelName = this.defaultModel) {
     try {
-      const model = this.getModel(modelName);
-      const chat = model.startChat({
-        history: messages.slice(0, -1).map(msg => ({
-          role: msg.role === 'assistant' ? 'model' : 'user',
-          parts: [{ text: msg.content }]
-        }))
-      });
+      const formattedMessages = messages.map(msg => ({
+        role: msg.role === 'assistant' ? 'model' : 'user',
+        parts: [{ text: msg.content }]
+      }));
 
-      const lastMessage = messages[messages.length - 1];
-      const result = await chat.sendMessage(lastMessage.content);
-      const response = await result.response;
+      const response = await this.genAI.models.generateContent({
+        model: modelName,
+        contents: formattedMessages
+      });
       
-      return response.text();
+      return response.text;
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new Error(`Failed to generate response from ${modelName}: ${error.message}`);
@@ -33,13 +29,74 @@ class GeminiService {
 
   async generateResponseSimple(prompt, modelName = this.defaultModel) {
     try {
-      const model = this.getModel(modelName);
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
-      return response.text();
+      const response = await this.genAI.models.generateContent({
+        model: modelName,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }]
+      });
+      return response.text;
     } catch (error) {
       console.error('Gemini API error:', error);
       throw new Error(`Failed to generate response from ${modelName}: ${error.message}`);
+    }
+  }
+
+  async generateImage(prompt, modelName = 'imagen-4.0-generate-001') {
+    try {
+      
+      if (modelName.includes('imagen')) {
+        // Para modelos Imagen, usa generateImages API
+        const response = await this.genAI.models.generateImages({
+          model: modelName,
+          prompt: prompt,
+          config: {
+            numberOfImages: 1,
+          },
+        });
+
+        if (response.generatedImages && response.generatedImages.length > 0) {
+          const generatedImage = response.generatedImages[0];
+          const imgBytes = generatedImage.image.imageBytes;
+
+          return {
+            text: 'Imagem gerada com sucesso!',
+            imageData: imgBytes
+          };
+        }
+        
+        throw new Error('No image data found in Imagen response');
+      } else {
+        // Para modelos Gemini, usa responseModalities
+        const response = await this.genAI.models.generateContent({
+          model: modelName,
+          contents: prompt,
+          config: {
+            responseModalities: [Modality.TEXT, Modality.IMAGE],
+          },
+        });
+
+        let imageBase64 = null;
+        let textResponse = '';
+
+        for (const part of response.candidates[0].content.parts) {
+          if (part.text) {
+            textResponse = part.text;
+          } else if (part.inlineData) {
+            imageBase64 = part.inlineData.data;
+          }
+        }
+
+        if (imageBase64) {
+          return {
+            text: textResponse,
+            imageData: imageBase64
+          };
+        }
+
+        throw new Error('No image was generated');
+      }
+    } catch (error) {
+      console.error('Image API error:', error);
+      throw new Error(`Failed to generate image from ${modelName}: ${error.message}`);
     }
   }
 }

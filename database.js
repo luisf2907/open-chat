@@ -25,9 +25,24 @@ class Database {
           role TEXT NOT NULL,
           content TEXT NOT NULL,
           timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+          message_type TEXT DEFAULT 'text',
+          image_data TEXT,
           FOREIGN KEY (conversation_id) REFERENCES conversations (id)
         )
       `);
+
+      // Adicionar colunas para mensagens existentes (migration)
+      this.db.run(`ALTER TABLE messages ADD COLUMN message_type TEXT DEFAULT 'text'`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.error('Error adding message_type column:', err);
+        }
+      });
+      
+      this.db.run(`ALTER TABLE messages ADD COLUMN image_data TEXT`, (err) => {
+        if (err && !err.message.includes('duplicate column name')) {
+          console.error('Error adding image_data column:', err);
+        }
+      });
     });
   }
 
@@ -69,11 +84,11 @@ class Database {
     });
   }
 
-  addMessage(conversationId, role, content) {
+  addMessage(conversationId, role, content, messageType = 'text', imageData = null) {
     return new Promise((resolve, reject) => {
       this.db.run(
-        'INSERT INTO messages (conversation_id, role, content) VALUES (?, ?, ?)',
-        [conversationId, role, content],
+        'INSERT INTO messages (conversation_id, role, content, message_type, image_data) VALUES (?, ?, ?, ?, ?)',
+        [conversationId, role, content, messageType, imageData],
         function(err) {
           if (err) reject(err);
           else {
