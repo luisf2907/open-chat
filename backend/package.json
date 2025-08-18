@@ -1,0 +1,29 @@
+{
+  "name": "open-chat-backend",
+  "version": "1.0.0",
+  "description": "Backend for Open Chat - AI Chat Application",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "dependencies": {
+    "@google/genai": "^1.14.0",
+    "@google/generative-ai": "^0.21.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "sqlite3": "^5.1.6"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.3"
+  },
+  "type": "commonjs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luisf2907/open-chat.git"
+  },
+  "keywords": ["ai", "chat", "gemini", "imagen", "node.js", "express"],
+  "author": "Luis Felipe Werneck",
+  "license": "MIT"
+}

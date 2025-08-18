@@ -1,35 +1,25 @@
 {
-  "name": "chat-backend",
+  "name": "open-chat",
   "version": "1.0.0",
-  "description": "Simple chat backend using Gemini API and SQLite",
-  "main": "server.js",
+  "description": "Modern AI Chat Application with Image Generation - React + Vite frontend and Node.js + Express backend",
   "scripts": {
-    "start": "node server.js",
-    "dev": "concurrently \"nodemon server.js\" \"cd frontend && npm run dev\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
-    "backend": "nodemon server.js",
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd frontend && npm run dev\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
+    "start": "concurrently \"cd backend && npm start\" \"cd frontend && npm run preview\" --names \"backend,frontend\" --prefix-colors \"blue,green\"",
+    "backend": "cd backend && npm run dev",
     "frontend": "cd frontend && npm run dev",
-    "install:all": "npm install && cd frontend && npm install"
-  },
-  "dependencies": {
-    "@google/genai": "^1.14.0",
-    "@google/generative-ai": "^0.21.0",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.18.2",
-    "sqlite3": "^5.1.6"
+    "build": "cd frontend && npm run build",
+    "install:deps": "npm install --prefix backend && npm install --prefix frontend && npm install"
   },
   "devDependencies": {
-    "concurrently": "^9.2.0",
-    "nodemon": "^3.0.3"
+    "concurrently": "^9.2.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/luisf2907/open-chat.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "keywords": ["ai", "chat", "gemini", "imagen", "react", "vite", "node.js", "express", "typescript"],
+  "author": "Luis Felipe Werneck",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/luisf2907/open-chat/issues"
   },
