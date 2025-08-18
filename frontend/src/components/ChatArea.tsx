@@ -454,6 +454,9 @@ export default function ChatArea({
             // Atualiza o estado para usar a nova conversa
             onNewConversation(newConv.id)
             
+            // Força atualização imediata da sidebar
+            window.dispatchEvent(new CustomEvent('conversation-created', { detail: newConv }))
+            
             // Envia a mensagem para a nova conversa
             setMessages([userMessage])
             
@@ -494,8 +497,6 @@ export default function ChatArea({
                   setStreamingMessage(null)
                   setIsStreaming(false)
                   setMessages(prev => [...prev, assistantMessage])
-                  // Força atualização da sidebar
-                  window.dispatchEvent(new CustomEvent('conversation-created', { detail: newConv }))
                 }, data.assistant_response.length * 6 + 500)
               }
             } else {
@@ -760,6 +761,20 @@ export default function ChatArea({
   const currentModels = isImageMode ? imageModels : textModels
   const currentSelectedModel = isImageMode ? selectedImageModel : selectedTextModel
   const selectedModelData = currentModels.find(m => m.id === currentSelectedModel)
+  const modelSelectorRef = useRef<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!modelSelectorRef.current) return
+      if (!(e.target instanceof Node)) return
+      if (!modelSelectorRef.current.contains(e.target)) {
+        setShowModelSelector(false)
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [modelSelectorRef])
 
   return (
     <div className="flex flex-col flex-1 h-full bg-gray-50 dark:bg-dark-900 relative">
@@ -803,7 +818,7 @@ export default function ChatArea({
           </div>
 
           {/* Seletor de modelo */}
-          <div className="relative">
+          <div className="relative" ref={modelSelectorRef}>
             <button
               onClick={() => setShowModelSelector(!showModelSelector)}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200/60 dark:border-dark-600/60 hover:bg-white/60 dark:hover:bg-dark-800/60 transition-all duration-200 bg-white/40 dark:bg-dark-800/40 backdrop-blur-sm"
