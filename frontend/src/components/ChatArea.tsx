@@ -239,10 +239,11 @@ export default function ChatArea({
   }, [conversationId])
 
   useEffect(() => {
-    if (shouldAutoScroll) {
+    // Apenas scroll suave para streaming e novas mensagens durante conversa ativa
+    if (shouldAutoScroll && (isStreaming || streamingMessage)) {
       scrollToBottom()
     }
-  }, [messages, streamingMessage, shouldAutoScroll])
+  }, [streamingMessage, shouldAutoScroll, isStreaming])
 
   // Detecta se o usuário está no final da página (throttled)
   const checkScrollPosition = () => {
@@ -272,13 +273,6 @@ export default function ChatArea({
       return () => cancelAnimationFrame(frameId)
     }
   }, [streamingMessage?.content, isStreaming])
-
-  // Scroll normal para outras mudanças (mensagens completas, loading)
-  useEffect(() => {
-    if (shouldAutoScroll && !isStreaming) {
-      scrollToBottom()
-    }
-  }, [messages, shouldAutoScroll])
 
   // Cleanup streaming ao desmontar componente
   useEffect(() => {
@@ -323,6 +317,12 @@ export default function ChatArea({
         imageData: msg.image_data
       }))
       setMessages(mappedMessages)
+      // Scroll instantâneo ao final após carregar mensagens - aguarda renderização
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          scrollToBottom(true)
+        })
+      })
     } catch (error) {
       console.error('Error fetching messages:', error)
     }
