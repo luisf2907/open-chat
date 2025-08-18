@@ -180,7 +180,7 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
                   onClick={(e) => deleteConversation(conversation.id, e)}
                   className="opacity-0 group-hover:opacity-100 p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"
                 >
-                  <Trash2 size={14} />
+                  <Trash2 size={14} className="text-black dark:text-white" />
                 </button>
               </div>
             ))}
