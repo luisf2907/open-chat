@@ -377,7 +377,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                           className="p-2 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                           title="Deletar"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={16} className="text-black dark:text-white" />
                         </button>
                       </div>
                     </div>
