@@ -37,7 +37,7 @@ function CodeBlock({ children, ...props }: any) {
           </span>
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded hover:bg-emerald-50 dark:hover:bg-dark-700 transition-colors"
+            className="flex items-center gap-1 px-2 py-1 text-xs bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
           >
             {copied ? (
               <>
@@ -147,7 +147,7 @@ export default function MarkdownRenderer({ content }: MarkdownRendererProps) {
           </div>
         ),
         thead: ({ children }) => (
-          <thead className="bg-emerald-50 dark:bg-dark-700">{children}</thead>
+          <thead className="bg-gray-50 dark:bg-dark-700">{children}</thead>
         ),
         th: ({ children }) => (
           <th className="px-4 py-2 text-left font-medium text-gray-900 dark:text-white border-b border-gray-200 dark:border-dark-600">

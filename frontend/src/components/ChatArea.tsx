@@ -1064,6 +1064,38 @@ export default function ChatArea({
     setAttachedFiles(prev => prev.filter((_, i) => i !== index))
   }
 
+  // Função para processar imagens do clipboard
+  const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = Array.from(e.clipboardData?.items || [])
+    const currentModel = textModels.find(m => m.id === selectedTextModel)
+    
+    if (!currentModel?.supportsFiles) return
+
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        e.preventDefault() // Previne o comportamento padrão de paste
+        
+        const file = item.getAsFile()
+        if (file && currentModel.supportedFileTypes?.includes(file.type)) {
+          // Usa o arquivo original com nome personalizado
+          Object.defineProperty(file, 'name', {
+            writable: true,
+            value: `pasted-image-${new Date().toISOString().replace(/[:.]/g, '-')}.${file.type.split('/')[1] || 'png'}`
+          })
+          
+          setAttachedFiles(prev => {
+            const existingNames = prev.map(f => f.name)
+            if (!existingNames.includes(file.name)) {
+              return [...prev, file]
+            }
+            return prev
+          })
+        }
+        break // Processa apenas a primeira imagem encontrada
+      }
+    }
+  }
+
   const getFileIcon = (file: File) => {
     if (file.type.startsWith('image/')) {
       return <Image size={16} className="text-blue-500" />
@@ -1344,11 +1376,12 @@ export default function ChatArea({
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={handleKeyPress}
+                    onPaste={handlePaste}
                     placeholder={
                       isImageMode 
                         ? "Descreva a imagem que deseja gerar..." 
                         : selectedModelData?.supportsFiles 
-                          ? "Digite sua mensagem ou arraste arquivos aqui..." 
+                          ? "Digite sua mensagem, cole imagens (Ctrl+V) ou arraste arquivos aqui..." 
                           : "Digite sua mensagem..."
                     }
                     className="w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:outline-none text-sm leading-relaxed max-h-28 min-h-[44px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-dark-600"

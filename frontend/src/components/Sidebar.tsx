@@ -148,7 +148,7 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
                 className={`group flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all duration-200 ${
                   selectedConversation === conversation.id
                     ? 'bg-gradient-to-r from-primary-50 to-primary-100 dark:from-primary-900/20 dark:to-primary-800/20 border border-primary-200 dark:border-primary-700'
-                    : 'hover:bg-emerald-50 dark:hover:bg-dark-700 border border-transparent'
+                    : 'hover:bg-gray-50 dark:hover:bg-dark-700 border border-transparent'
                 }`}
               >
                 <div className="flex items-center gap-3 flex-1 min-w-0">
