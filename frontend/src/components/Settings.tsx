@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3, Paperclip, Palette } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useToast } from '../contexts/ToastContext'
 import { useColor } from '../contexts/ColorContext'
 
@@ -26,6 +27,19 @@ interface SettingsProps {
 }
 
 export default function Settings({ isOpen, onClose }: SettingsProps) {
+  const { t } = useTranslation()
+
+  // Função para traduzir descrições de modelos
+  const translateModelDescription = (description: string) => {
+    const descriptionMap: Record<string, string> = {
+      'Mais rápido e eficiente': t('settings.model_descriptions.faster_efficient'),
+      'Mais poderoso para tarefas complexas': t('settings.model_descriptions.powerful_complex_tasks'),
+      'Modelo Open Source': t('settings.model_descriptions.open_source_model'),
+      'Geração de imagens com IA': t('settings.model_descriptions.ai_image_generation'),
+      'Geração de imagens com IA mais rápidas.': t('settings.model_descriptions.faster_ai_image_generation')
+    }
+    return descriptionMap[description] || description
+  }
   const [models, setModels] = useState<ModelsData>({ textModels: [], imageModels: [] })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -72,12 +86,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(models)
       })
-      showToast('Configurações salvas com sucesso!', 'success')
+      showToast(t('app.settings_saved'), 'success')
       // Fecha o modal imediatamente após salvar
       onClose()
     } catch (error) {
       console.error('Error saving models:', error)
-      showToast('Erro ao salvar modelos', 'error')
+      showToast(t('app.error_saving'), 'error')
     } finally {
       setSaving(false)
     }
@@ -103,7 +117,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   }
 
   const deleteModel = (type: 'text' | 'image', modelId: string) => {
-    if (confirm('Tem certeza que deseja deletar este modelo?')) {
+    if (confirm(t('settings.confirm_delete_model'))) {
       setModels(prev => ({
         ...prev,
         [`${type}Models`]: prev[`${type}Models`].filter(model => model.id !== modelId)
@@ -156,6 +170,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   }
 
   const CustomizationTab = () => {
+    const { i18n } = useTranslation()
+    
+    const handleLanguageChange = (lng: string) => {
+      i18n.changeLanguage(lng)
+    }
+    
     const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
       const color = e.target.value
       setTempColor(color)
@@ -173,31 +193,70 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
     }
 
     const presetColors = [
-      { name: 'Azul', color: '#3b82f6' },
-      { name: 'Verde', color: '#10b981' },
-      { name: 'Roxo', color: '#8b5cf6' },
-      { name: 'Rosa', color: '#ec4899' },
-      { name: 'Laranja', color: '#f59e0b' },
-      { name: 'Vermelho', color: '#ef4444' },
-      { name: 'Teal', color: '#14b8a6' },
-      { name: 'Indigo', color: '#6366f1' },
+      { nameKey: 'blue', color: '#3b82f6' },
+      { nameKey: 'green', color: '#10b981' },
+      { nameKey: 'purple', color: '#8b5cf6' },
+      { nameKey: 'pink', color: '#ec4899' },
+      { nameKey: 'orange', color: '#f59e0b' },
+      { nameKey: 'red', color: '#ef4444' },
+      { nameKey: 'teal', color: '#14b8a6' },
+      { nameKey: 'indigo', color: '#6366f1' },
     ]
 
     return (
       <div className="space-y-6">
+        {/* Seção de Idioma */}
         <div>
           <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Personalização de Cores
+            {t('settings.language')}
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            Customize a cor principal da interface. A mudança será aplicada em tempo real.
+            {t('settings.choose_language')}
+          </p>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => handleLanguageChange('pt')}
+              className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-colors hover:bg-gray-50 dark:hover:bg-dark-700 ${
+                i18n.language === 'pt'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-gray-200 dark:border-gray-600'
+              }`}
+            >
+              <span className="text-2xl">🇧🇷</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t('settings.portuguese')}
+              </span>
+            </button>
+            <button
+              onClick={() => handleLanguageChange('en')}
+              className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-colors hover:bg-gray-50 dark:hover:bg-dark-700 ${
+                i18n.language === 'en'
+                  ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                  : 'border-gray-200 dark:border-gray-600'
+              }`}
+            >
+              <span className="text-2xl">🇺🇸</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                {t('settings.english')}
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Seção de Cores */}
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+            {t('settings.primary_color')}
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            {t('settings.choose_color')}
           </p>
         </div>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2 text-gray-700 dark:text-gray-300">
-              Seletor de Cor
+              {t('settings.color_selector')}
             </label>
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -210,7 +269,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               </div>
               <div className="flex-1">
                 <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">
-                  Código Hexadecimal
+                  {t('settings.hexadecimal_code')}
                 </label>
                 <input
                   type="text"
@@ -225,12 +284,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
 
           <div>
             <label className="block text-sm font-medium mb-3 text-gray-700 dark:text-gray-300">
-              Cores Predefinidas
+              {t('settings.preset_colors')}
             </label>
             <div className="grid grid-cols-4 gap-3">
               {presetColors.map((preset) => (
                 <button
-                  key={preset.name}
+                  key={preset.nameKey}
                   onClick={() => {
                     setTempColor(preset.color)
                     setPrimaryColor(preset.color)
@@ -246,7 +305,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                     style={{ backgroundColor: preset.color }}
                   />
                   <span className="text-sm text-gray-700 dark:text-gray-300">
-                    {preset.name}
+                    {t(`colors.${preset.nameKey}`)}
                   </span>
                 </button>
               ))}
@@ -258,10 +317,10 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               onClick={resetToDefault}
               className="px-4 py-2 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
             >
-              Restaurar Padrão
+              {t('settings.restore_default')}
             </button>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              As mudanças são salvas automaticamente
+              {t('settings.changes_auto_saved')}
             </div>
           </div>
         </div>
@@ -279,7 +338,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
           <div className="flex items-center justify-between border-b border-gray-200 dark:border-dark-600 p-6">
             <div className="flex items-center gap-3">
               <SettingsIcon size={24} className="text-primary-600" />
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Configurações</h2>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{t('settings.title')}</h2>
             </div>
             <button
               onClick={onClose}
@@ -300,7 +359,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                 >
-                  Modelos de Texto
+                  {t('settings.text_models')}
                 </button>
                 <button
                   onClick={() => setActiveTab('image')}
@@ -310,7 +369,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                       : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
                   }`}
                 >
-                  Modelos de Imagem
+                  {t('settings.image_models')}
                 </button>
                 <button
                   onClick={() => setActiveTab('customization')}
@@ -321,7 +380,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                   }`}
                 >
                   <Palette size={16} />
-                  Personalização
+                  {t('settings.customization')}
                 </button>
               </div>
             </div>
@@ -336,7 +395,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               <div className="space-y-4">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                    {activeTab === 'text' ? 'Modelos de Texto' : activeTab === 'image' ? 'Modelos de Imagem' : 'Personalização'}
+                    {activeTab === 'text' ? t('settings.text_models') : activeTab === 'image' ? t('settings.image_models') : t('settings.customization')}
                   </h3>
                   {(activeTab === 'text' || activeTab === 'image') && (
                     <button
@@ -344,14 +403,14 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                       className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors"
                     >
                       <Plus size={16} />
-                      Adicionar Modelo
+                      {t('settings.add_model')}
                     </button>
                   )}
                 </div>
 
                 {(activeTab === 'text' || activeTab === 'image') && showAddForm && (
                   <div className="border border-gray-200 dark:border-dark-600 rounded-lg p-4 mb-4">
-                    <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">Novo Modelo</h4>
+                    <h4 className="font-semibold mb-3 text-gray-900 dark:text-white">{t('settings.new_model')}</h4>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium mb-1 text-gray-700 dark:text-gray-300">ID</label>
@@ -380,7 +439,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                           value={newModel.description || ''}
                           onChange={(e) => setNewModel(prev => ({ ...prev, description: e.target.value }))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-dark-500 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-dark-700 dark:text-white"
-                          placeholder="Descrição do modelo"
+                          placeholder={t('settings.model_description_placeholder')}
                         />
                       </div>
                       <div>
@@ -400,8 +459,8 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                           onChange={(e) => setNewModel(prev => ({ ...prev, type: e.target.value as 'text' | 'image' }))}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-dark-500 rounded-lg focus:ring-2 focus:ring-primary-500 dark:bg-dark-700 dark:text-white"
                         >
-                          <option value="text">Texto</option>
-                          <option value="image">Imagem</option>
+                          <option value="text">{t('chat.text_mode')}</option>
+                          <option value="image">{t('chat.image_mode')}</option>
                         </select>
                       </div>
                     </div>
@@ -424,14 +483,14 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                               className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                             />
                             <label htmlFor="newModel-supportsFiles" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                              Aceita imagens e documentos
+                              {t('settings.accepts_images_pdfs')}
                             </label>
                           </div>
                           
                           {newModel.supportsFiles && (
                             <div>
                               <label className="block text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">
-                                Tipos de arquivo suportados:
+                                {t('settings.supported_file_types')}
                               </label>
                               <div className="grid grid-cols-2 gap-2 text-xs">
                                 {[
@@ -472,13 +531,13 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                         onClick={addNewModel}
                         className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
                       >
-                        Adicionar
+                        {t('settings.add')}
                       </button>
                       <button
                         onClick={() => setShowAddForm(false)}
                         className="px-4 py-2 bg-gray-500 text-white rounded-lg hover:bg-gray-600 transition-colors"
                       >
-                        Cancelar
+                        {t('settings.cancel')}
                       </button>
                     </div>
                   </div>
@@ -527,14 +586,14 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                                       className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                                     />
                                     <label htmlFor={`${model.id}-supportsFiles`} className="ml-2 text-sm text-gray-700 dark:text-gray-300">
-                                      Aceita imagens e documentos
+                                      {t('settings.accepts_images_pdfs')}
                                     </label>
                                   </div>
                                   
                                   {model.supportsFiles && (
                                     <div>
                                       <label className="block text-xs font-medium mb-2 text-gray-700 dark:text-gray-300">
-                                        Tipos de arquivo suportados:
+                                        {t('settings.supported_file_types')}
                                       </label>
                                       <div className="grid grid-cols-2 gap-2 text-xs">
                                         {[
@@ -575,13 +634,13 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                                 onClick={() => setEditingModel(null)}
                                 className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700 transition-colors"
                               >
-                                Salvar
+                                {t('settings.save')}
                               </button>
                               <button
                                 onClick={() => setEditingModel(null)}
                                 className="px-3 py-1 bg-gray-500 text-white rounded text-sm hover:bg-gray-600 transition-colors"
                               >
-                                Cancelar
+                                {t('settings.cancel')}
                               </button>
                             </div>
                           </div>
@@ -592,7 +651,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                               {model.supportsFiles && (
                               <div className="flex items-center gap-2">
                                 <Paperclip size={16} className="text-primary-600 dark:text-primary-400" />
-                                <span className="text-xs text-gray-500">Aceita imagens e PDFs</span>
+                                <span className="text-xs text-gray-500">{t('settings.accepts_images_pdfs')}</span>
                               </div>
                               )}
                               {model.badge && (
@@ -602,11 +661,11 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                               )}
                               {model.default && (
                                 <span className="px-2 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 text-xs rounded-full font-medium">
-                                  PADRÃO
+                                  {t('settings.default').toUpperCase()}
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{model.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2">{translateModelDescription(model.description)}</p>
                             
                             {/* Mostrar tipos de arquivo suportados */}
                             {model.supportsFiles && model.supportedFileTypes && model.supportedFileTypes.length > 0 && (
@@ -653,7 +712,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                             onChange={() => toggleModel(activeTab, model.id)}
                             className="w-4 h-4 text-primary-600 rounded focus:ring-primary-500"
                           />
-                          <span className="text-sm text-gray-700 dark:text-gray-300">Ativo</span>
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{t('settings.active')}</span>
                         </label>
 
                         <button
@@ -665,7 +724,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                               : 'bg-gray-100 dark:bg-dark-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-dark-600'
                           }`}
                         >
-                          {model.default ? 'Padrão' : 'Definir como padrão'}
+                          {model.default ? t('settings.default') : t('settings.set_as_default')}
                         </button>
 
                         <button
@@ -689,7 +748,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 onClick={onClose}
                 className="px-6 py-2 border border-gray-300 dark:border-dark-500 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
               >
-                Cancelar
+                {t('settings.cancel')}
               </button>
               <button
                 onClick={saveModels}
@@ -697,7 +756,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                 className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Save size={16} />
-                {saving ? 'Salvando...' : 'Salvar Alterações'}
+                {saving ? t('app.saving') : t('app.save_changes')}
               </button>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { ChevronDown, Sparkles, Bot, User, PlaneTakeoff, Square, PanelRightOpen, ArrowDown, Edit3, Check, X, Image, FileText, RotateCcw, Paperclip, File } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useTypewriter } from '../hooks/useTypewriter'
 import TypingIndicator from './TypingIndicator'
 import MarkdownRenderer from './MarkdownRenderer'
@@ -78,6 +79,7 @@ function MessageBubble({
   onEditContentChange?: (content: string) => void;
   onRetry?: (retryData: NonNullable<Message['retryData']>) => void;
 }) {
+  const { t } = useTranslation()
   const { displayText } = useTypewriter(isTyping ? message.content : '', 6)
   const content = isTyping ? displayText : message.content
 
@@ -104,7 +106,7 @@ function MessageBubble({
             <button
               onClick={onStartEdit}
               className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 bg-white dark:bg-dark-800 border border-gray-200 dark:border-dark-600 rounded-lg shadow-md hover:shadow-lg hover:scale-105"
-              title="Editar mensagem"
+              title={t('chat.edit_message')}
             >
               <Edit3 size={12} className="text-gray-600 dark:text-gray-300" />
             </button>
@@ -140,21 +142,21 @@ function MessageBubble({
                     className="px-3 py-1.5 text-xs bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-1"
                   >
                     <Check size={12} />
-                    Salvar
+                    {t('chat.save')}
                   </button>
                 </div>
               </div>
             ) : message.error ? (
               <div className="flex items-center gap-3">
                 <div className="flex-1">
-                  <div className="font-medium">Não foi possível gerar a resposta.</div>
-                  <div className="opacity-80 text-xs">Você pode tentar novamente.</div>
+                  <div className="font-medium">{t('chat.error_generating_response')}</div>
+                  <div className="opacity-80 text-xs">{t('chat.can_try_again')}</div>
                 </div>
                 {message.retryData && onRetry && (
                   <button
                     onClick={() => onRetry(message.retryData!)}
                     className="flex items-center gap-1 px-2.5 py-1.5 text-xs rounded-md bg-red-100 hover:bg-red-200 dark:bg-red-900/40 dark:hover:bg-red-900/60 text-red-700 dark:text-red-200 transition-colors"
-                    title="Tentar novamente"
+                    title={t('chat.try_again')}
                   >
                     <RotateCcw size={14} />
                     Retry
@@ -165,7 +167,7 @@ function MessageBubble({
               <div className="space-y-2">
                 <img 
                   src={message.imageData ? `data:image/png;base64,${message.imageData}` : `http://localhost:3000${message.imageUrl}`} 
-                  alt="Imagem gerada"
+                  alt={t('chat.generated_image_alt')}
                   className="max-w-sm w-80 h-auto rounded-lg shadow-md"
                 />
                 {message.content && (
@@ -263,8 +265,8 @@ function MessageBubble({
                               {attachment.name}
                             </p>
                             <p className="text-xs text-gray-500 dark:text-gray-400">
-                              {attachment.type.startsWith('image/') ? 'Imagem' : 
-                               attachment.type === 'application/pdf' ? 'PDF' : 'Arquivo'}
+                              {attachment.type.startsWith('image/') ? t('chat.attachment_image') : 
+                               attachment.type === 'application/pdf' ? t('chat.attachment_pdf') : t('chat.attachment_file')}
                             </p>
                           </div>
                         </div>
@@ -302,6 +304,7 @@ export default function ChatArea({
   onToggleSidebar,
   onNewConversation 
 }: ChatAreaProps) {
+  const { t } = useTranslation()
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -948,6 +951,18 @@ export default function ChatArea({
   const modelSelectorRef = useRef<HTMLDivElement | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
 
+  // Função para traduzir descrições de modelos
+  const translateModelDescription = (description: string) => {
+    const descriptionMap: Record<string, string> = {
+      'Mais rápido e eficiente': t('settings.model_descriptions.faster_efficient'),
+      'Mais poderoso para tarefas complexas': t('settings.model_descriptions.powerful_complex_tasks'),
+      'Modelo Open Source': t('settings.model_descriptions.open_source_model'),
+      'Geração de imagens com IA': t('settings.model_descriptions.ai_image_generation'),
+      'Geração de imagens com IA mais rápidas.': t('settings.model_descriptions.faster_ai_image_generation')
+    }
+    return descriptionMap[description] || description
+  }
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (!modelSelectorRef.current) return
@@ -967,10 +982,9 @@ export default function ChatArea({
     
     setDragDepth(prev => prev + 1)
     
-    // Só verifica se o modelo suporta arquivos quando entra pela primeira vez
+    // Só verifica se há arquivos sendo arrastados quando entra pela primeira vez
     if (dragDepth === 0) {
-      const currentModel = textModels.find(m => m.id === selectedTextModel)
-      if (currentModel?.supportsFiles && e.dataTransfer.items) {
+      if (e.dataTransfer.items) {
         // Verifica se há arquivos sendo arrastados
         const hasFiles = Array.from(e.dataTransfer.items).some(item => item.kind === 'file')
         if (hasFiles) {
@@ -1007,12 +1021,10 @@ export default function ChatArea({
     setDragDepth(0)
 
     const files = Array.from(e.dataTransfer.files)
-    const currentModel = textModels.find(m => m.id === selectedTextModel)
     
-    if (!currentModel?.supportsFiles) return
-
+    // Permite todos os tipos de arquivo, deixando o modelo decidir
     const validFiles = files.filter(file => 
-      currentModel.supportedFileTypes?.includes(file.type)
+      file.type.startsWith('image/') || file.type === 'application/pdf'
     )
 
     if (validFiles.length > 0) {
@@ -1032,12 +1044,10 @@ export default function ChatArea({
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || [])
-    const currentModel = textModels.find(m => m.id === selectedTextModel)
     
-    if (!currentModel?.supportsFiles) return
-
+    // Permite todos os tipos de arquivo, deixando o modelo decidir
     const validFiles = files.filter(file => 
-      currentModel.supportedFileTypes?.includes(file.type)
+      file.type.startsWith('image/') || file.type === 'application/pdf'
     )
 
     if (validFiles.length > 0) {
@@ -1067,16 +1077,13 @@ export default function ChatArea({
   // Função para processar imagens do clipboard
   const handlePaste = async (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
     const items = Array.from(e.clipboardData?.items || [])
-    const currentModel = textModels.find(m => m.id === selectedTextModel)
     
-    if (!currentModel?.supportsFiles) return
-
     for (const item of items) {
       if (item.type.startsWith('image/')) {
         e.preventDefault() // Previne o comportamento padrão de paste
         
         const file = item.getAsFile()
-        if (file && currentModel.supportedFileTypes?.includes(file.type)) {
+        if (file) {
           // Usa o arquivo original com nome personalizado
           Object.defineProperty(file, 'name', {
             writable: true,
@@ -1140,7 +1147,7 @@ export default function ChatArea({
             <button
               onClick={onToggleSidebar}
               className="p-2 rounded-lg hover:bg-white/60 dark:hover:bg-dark-800/60 transition-colors"
-              title="Abrir sidebar"
+              title={t('chat.open_sidebar')}
             >
               <PanelRightOpen size={18} className="text-gray-600 dark:text-gray-300" />
             </button>
@@ -1157,7 +1164,7 @@ export default function ChatArea({
               }`}
             >
               <FileText size={14} />
-              Texto
+              {t('chat.text_mode')}
             </button>
             <button
               onClick={() => setIsImageMode(true)}
@@ -1168,7 +1175,7 @@ export default function ChatArea({
               }`}
             >
               <Image size={14} />
-              Imagem
+              {t('chat.image_mode')}
             </button>
           </div>
 
@@ -1221,7 +1228,7 @@ export default function ChatArea({
                             <Paperclip size={12} className="text-primary-300" />
                           )}
                         </div>
-                        <div className="text-xs text-primary-200 mt-0.5">{model.description}</div>
+                        <div className="text-xs text-primary-200 mt-0.5">{translateModelDescription(model.description)}</div>
                       </div>
                       {model.badge && (
                         <span className="text-xs px-1.5 py-0.5 bg-primary-800/30 text-primary-100 rounded-md font-medium">
@@ -1249,12 +1256,12 @@ export default function ChatArea({
                 <Sparkles size={32} className="text-white" />
               </div>
               <h3 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
-                Como posso ajudar hoje?
+                {t('chat.how_can_help')}
               </h3>
               <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
                 {conversationId 
-                  ? 'Continue nossa conversa digitando uma mensagem abaixo.'
-                  : 'Comece uma nova conversa fazendo uma pergunta ou enviando uma mensagem.'
+                  ? t('chat.continue_conversation')
+                  : t('chat.start_conversation')
                 }
               </p>
             </div>
@@ -1303,7 +1310,7 @@ export default function ChatArea({
             <button
               onClick={forceScrollToBottom}
               className="p-3 bg-primary-600 hover:bg-primary-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105"
-              title="Ir para o final"
+              title={t('chat.go_to_bottom')}
             >
               <ArrowDown size={20} />
             </button>
@@ -1328,10 +1335,10 @@ export default function ChatArea({
               </div>
               
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Solte seus arquivos aqui
+                {t('chat.drop_files_here')}
               </h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                Imagens e PDFs suportados
+                {t('chat.supported_files')}
               </p>
             </div>
           </div>
@@ -1343,7 +1350,7 @@ export default function ChatArea({
         <div className="relative z-10 p-4">
           <div className="max-w-4xl mx-auto">
             <div className={`relative backdrop-blur-xl rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 transition-all duration-300 ${
-              isDragOver && selectedModelData?.supportsFiles && !isImageMode
+              isDragOver && !isImageMode
                 ? 'bg-white/95 dark:bg-dark-800/95 border-2 border-dashed border-primary-400/80 dark:border-primary-500/80'
                 : 'bg-white/90 dark:bg-dark-800/90 border border-gray-200/40 dark:border-dark-600/40'
             }`}>
@@ -1379,10 +1386,8 @@ export default function ChatArea({
                     onPaste={handlePaste}
                     placeholder={
                       isImageMode 
-                        ? "Descreva a imagem que deseja gerar..." 
-                        : selectedModelData?.supportsFiles 
-                          ? "Digite sua mensagem, cole imagens (Ctrl+V) ou arraste arquivos aqui..." 
-                          : "Digite sua mensagem..."
+                        ? t('chat.describe_image') 
+                        : t('chat.type_message_with_files')
                     }
                     className="w-full px-4 py-3 bg-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none focus:outline-none text-sm leading-relaxed max-h-28 min-h-[44px] scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-dark-600"
                     rows={1}
@@ -1395,20 +1400,20 @@ export default function ChatArea({
                 </div>
                 
                 {/* Botão de anexar arquivos */}
-                {selectedModelData?.supportsFiles && !isImageMode && (
+                {!isImageMode && (
                   <>
                     <input
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept={selectedModelData.supportedFileTypes?.join(',')}
+                      accept="image/*,.pdf"
                       onChange={handleFileSelect}
                       className="hidden"
                     />
                     <button
                       onClick={() => fileInputRef.current?.click()}
                       className="flex-shrink-0 w-11 h-11 bg-gray-100 hover:bg-gray-200 dark:bg-dark-700 dark:hover:bg-dark-600 text-gray-600 dark:text-gray-300 rounded-xl transition-all duration-200 flex items-center justify-center"
-                      title="Anexar arquivo"
+                      title={t('chat.attach_file')}
                     >
                       <Paperclip size={16} />
                     </button>
@@ -1419,7 +1424,7 @@ export default function ChatArea({
                   <button
                     onClick={stopStreaming}
                     className="flex-shrink-0 w-11 h-11 bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 flex items-center justify-center group"
-                    title="Parar geração"
+                    title={t('chat.stop_generation')}
                   >
                     <Square size={15} fill="currentColor" className="group-hover:scale-110 transition-transform" />
                   </button>
@@ -1428,7 +1433,7 @@ export default function ChatArea({
                     onClick={sendMessage}
                     disabled={!input.trim() && attachedFiles.length === 0}
                     className="flex-shrink-0 w-11 h-11 bg-gradient-to-r from-primary-500 to-primary-600 hover:from-primary-600 hover:to-primary-700 disabled:from-gray-300 disabled:to-gray-400 dark:disabled:from-dark-600 dark:disabled:to-dark-700 text-white disabled:text-gray-500 dark:disabled:text-gray-400 rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 disabled:hover:scale-100 disabled:shadow-md flex items-center justify-center group disabled:cursor-not-allowed"
-                    title="Enviar mensagem"
+                    title={t('chat.send_message')}
                   >
                     <PlaneTakeoff size={15} className="group-hover:scale-110 group-disabled:scale-100 transition-transform" />
                   </button>

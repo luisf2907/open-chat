@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Plus, MessageSquare, Trash2, Sun, Moon, PanelRightClose, Settings } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { useTheme } from '../contexts/ThemeContext'
 import SettingsModal from './Settings'
 
@@ -18,6 +19,7 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen, onToggle, selectedConversation, onSelectConversation }: SidebarProps) {
+  const { t } = useTranslation()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [loading, setLoading] = useState(true)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -76,10 +78,10 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
     const diff = now.getTime() - date.getTime()
     const days = Math.floor(diff / (1000 * 60 * 60 * 24))
     
-    if (days === 0) return 'Hoje'
-    if (days === 1) return 'Ontem'
-    if (days < 7) return `${days} dias atrás`
-    return date.toLocaleDateString('pt-BR')
+    if (days === 0) return t('chat.today')
+    if (days === 1) return t('chat.yesterday')
+    if (days < 7) return `${days} ${t('chat.days_ago')}`
+    return date.toLocaleDateString()
   }
 
   if (!isOpen) {
@@ -95,7 +97,7 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
             <button
               onClick={() => setSettingsOpen(true)}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
-              title="Configurações"
+              title={t('settings.settings_tooltip')}
             >
               <Settings size={18} className="text-gray-600 dark:text-gray-300" />
             </button>
@@ -113,7 +115,7 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
             <button
               onClick={onToggle}
               className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-dark-700 transition-colors"
-              title="Fechar sidebar"
+              title={t('chat.close_sidebar')}
             >
               <PanelRightClose size={18} className="text-gray-600 dark:text-gray-300" />
             </button>
@@ -124,7 +126,7 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
           className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-gradient-to-r from-primary-600 to-primary-700 text-white rounded-xl hover:from-primary-700 hover:to-primary-800 transition-all duration-200 shadow-md hover:shadow-lg font-medium"
         >
           <Plus size={18} />
-          Nova conversa
+          {t('chat.new_conversation')}
         </button>
       </div>
 
@@ -136,8 +138,8 @@ export default function Sidebar({ isOpen, onToggle, selectedConversation, onSele
         ) : conversations.length === 0 ? (
           <div className="text-center py-12">
             <MessageSquare size={48} className="text-gray-300 dark:text-dark-500 mx-auto mb-4" />
-            <p className="text-gray-500 dark:text-gray-400">Nenhuma conversa ainda</p>
-            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Comece uma nova conversa!</p>
+            <p className="text-gray-500 dark:text-gray-400">{t('chat.no_conversations')}</p>
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">{t('chat.start_new_conversation')}</p>
           </div>
         ) : (
           <div className="space-y-2">

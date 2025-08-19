@@ -7,15 +7,7 @@
       "badge": "FAST",
       "type": "text",
       "enabled": true,
-      "default": true,
-      "supportsFiles": true,
-      "supportedFileTypes": [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-        "application/pdf"
-      ]
+      "default": true
     },
     {
       "id": "gemini-2.5-pro",
@@ -24,26 +16,7 @@
       "badge": "PRO",
       "type": "text",
       "enabled": true,
-      "default": false,
-      "supportsFiles": false,
-      "supportedFileTypes": []
-    },
-    {
-      "id": "gemma-3-27b-it",
-      "name": "Gemma 3.27B",
-      "description": "Modelo Open Source",
-      "badge": "LIGHT",
-      "type": "text",
-      "enabled": true,
-      "default": false,
-      "supportsFiles": true,
-      "supportedFileTypes": [
-        "image/jpeg",
-        "image/png",
-        "image/gif",
-        "image/webp",
-        "application/pdf"
-      ]
+      "default": false
     }
   ],
   "imageModels": [
@@ -59,7 +32,7 @@
     {
       "id": "gemini-2.0-flash-preview-image-generation",
       "name": "Gemini 2.0 Flash Image",
-      "description": "Geração de imagens com IA mais rápidas.",
+      "description": "Geração de imagens com IA",
       "badge": "FREE TIER",
       "type": "image",
       "enabled": true,

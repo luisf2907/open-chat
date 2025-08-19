@@ -182,7 +182,7 @@ Edite o arquivo `backend/models.json` para adicionar/remover modelos:
       "id": "gemini-2.5-flash",
       "name": "Gemini 2.5 Flash",
       "description": "Modelo rápido e eficiente",
-      "badge": "NOVO",
+      "badge": "FAST",
       "type": "text",
       "enabled": true,
       "default": true
@@ -193,7 +193,7 @@ Edite o arquivo `backend/models.json` para adicionar/remover modelos:
       "id": "imagen-4.0-generate-001",
       "name": "Imagen 4",
       "description": "Geração de imagens com IA",
-      "badge": "NOVO",
+      "badge": "NEW",
       "type": "image",
       "enabled": true,
       "default": true
