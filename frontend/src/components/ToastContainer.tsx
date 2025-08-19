@@ -8,34 +8,34 @@ function ToastItem({ toast }: { toast: Toast }) {
   const getIcon = () => {
     switch (toast.type) {
       case 'success':
-        return <CheckCircle size={20} className="text-green-500" />
+        return <CheckCircle size={20} className="text-primary-500" />
       case 'error':
         return <XCircle size={20} className="text-red-500" />
       case 'info':
-        return <Info size={20} className="text-blue-500" />
+        return <Info size={20} className="text-primary-500" />
     }
   }
 
   const getBgColor = () => {
     switch (toast.type) {
       case 'success':
-        return 'bg-white dark:bg-dark-800 border-green-200 dark:border-green-800'
+        return 'bg-primary-50/90 dark:bg-primary-900/20 border-primary-200/50 dark:border-primary-700/50'
       case 'error':
-        return 'bg-white dark:bg-dark-800 border-red-200 dark:border-red-800'
+        return 'bg-red-50/90 dark:bg-red-900/20 border-red-200/50 dark:border-red-700/50'
       case 'info':
-        return 'bg-white dark:bg-dark-800 border-blue-200 dark:border-blue-800'
+        return 'bg-primary-50/90 dark:bg-primary-900/20 border-primary-200/50 dark:border-primary-700/50'
     }
   }
 
   return (
-    <div className={`${getBgColor()} rounded-xl border shadow-lg backdrop-blur-sm p-4 flex items-center gap-3 animate-slide-in-right max-w-sm w-full`}>
+    <div className={`${getBgColor()} rounded-xl border shadow-xl backdrop-blur-md p-4 flex items-center gap-3 animate-slide-in-right max-w-sm w-full`}>
       {getIcon()}
-      <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white">
+      <span className="flex-1 text-sm font-medium text-primary-900 dark:text-primary-100">
         {toast.message}
       </span>
       <button
         onClick={() => removeToast(toast.id)}
-        className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 transition-colors"
+        className="text-primary-400 hover:text-primary-600 dark:text-primary-500 dark:hover:text-primary-300 transition-colors"
       >
         <X size={16} />
       </button>
