@@ -245,8 +245,8 @@ function MessageBubble({
                         <div key={index} className="flex items-center gap-3 bg-gray-50 dark:bg-gray-700 rounded-xl p-3 border border-gray-200 dark:border-gray-600">
                           <div className="flex-shrink-0">
                             {attachment.type.startsWith('image/') ? (
-                              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                                <Image size={16} className="text-blue-600" />
+                              <div className="w-8 h-8 bg-primary-100 dark:bg-primary-900/30 rounded-lg flex items-center justify-center">
+                                <Image size={16} className="text-primary-600" />
                               </div>
                             ) : attachment.type === 'application/pdf' ? (
                               <div className="w-8 h-8 bg-red-100 dark:bg-red-900/30 rounded-lg flex items-center justify-center">
@@ -1098,7 +1098,7 @@ export default function ChatArea({
 
   const getFileIcon = (file: File) => {
     if (file.type.startsWith('image/')) {
-      return <Image size={16} className="text-blue-500" />
+      return <Image size={16} className="text-primary-500" />
     } else if (file.type === 'application/pdf') {
       return <File size={16} className="text-red-500" />
     }
@@ -1183,7 +1183,7 @@ export default function ChatArea({
                 <div className="text-xs font-medium text-gray-900 dark:text-white flex items-center gap-1">
                   {selectedModelData?.name || currentSelectedModel}
                   {selectedModelData?.supportsFiles && (
-                    <Paperclip size={12} className="text-blue-600 dark:text-blue-400" />
+                    <Paperclip size={12} className="text-primary-600 dark:text-primary-400" />
                   )}
                 </div>
               </div>
@@ -1196,7 +1196,7 @@ export default function ChatArea({
             </button>
 
             {showModelSelector && (
-              <div className="absolute top-full left-0 mt-1 w-72 bg-emerald-900 dark:bg-emerald-900 border border-emerald-700 rounded-xl shadow-xl z-30 overflow-hidden text-emerald-100">
+              <div className="absolute top-full left-0 mt-1 w-72 bg-primary-900/95 backdrop-blur-xl border border-primary-700 rounded-xl shadow-xl z-30 overflow-hidden text-primary-100">
                 {currentModels.map((model) => (
                   <button
                     key={model.id}
@@ -1209,8 +1209,8 @@ export default function ChatArea({
                       }
                       setShowModelSelector(false)
                     }}
-                    className={`w-full text-left p-3 hover:bg-emerald-800 transition-colors border-b border-emerald-800 last:border-b-0 ${
-                      currentSelectedModel === model.id ? 'bg-emerald-800/25' : ''
+                    className={`w-full text-left p-3 hover:bg-primary-800/80 transition-colors border-b border-primary-800/50 last:border-b-0 ${
+                      currentSelectedModel === model.id ? 'bg-primary-800/25' : ''
                     }`}
                   >
                     <div className="flex items-center justify-between">
@@ -1218,13 +1218,13 @@ export default function ChatArea({
                         <div className="font-medium text-sm text-white flex items-center gap-1">
                           {model.name}
                           {model.supportsFiles && (
-                            <Paperclip size={12} className="text-blue-400" />
+                            <Paperclip size={12} className="text-primary-300" />
                           )}
                         </div>
-                        <div className="text-xs text-emerald-200 mt-0.5">{model.description}</div>
+                        <div className="text-xs text-primary-200 mt-0.5">{model.description}</div>
                       </div>
                       {model.badge && (
-                        <span className="text-xs px-1.5 py-0.5 bg-emerald-800/30 text-emerald-100 rounded-md font-medium">
+                        <span className="text-xs px-1.5 py-0.5 bg-primary-800/30 text-primary-100 rounded-md font-medium">
                           {model.badge}
                         </span>
                       )}
