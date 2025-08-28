@@ -4,6 +4,7 @@ const cors = require('cors');
 const path = require('path');
 const multer = require('multer');
 const Database = require('./database');
+const DatabaseManager = require('./database-manager');
 const GeminiService = require('./gemini');
 const createRoutes = require('./routes');
 
@@ -38,9 +39,10 @@ const upload = multer({
 app.use('/images', express.static(path.join(__dirname, 'public', 'images')));
 
 const database = new Database();
-const geminiService = new GeminiService(process.env.GEMINI_API_KEY);
+const databaseManager = new DatabaseManager();
+const geminiService = new GeminiService(process.env.GEMINI_API_KEY, databaseManager);
 
-app.use('/api', createRoutes(database, geminiService, upload));
+app.use('/api', createRoutes(database, geminiService, upload, databaseManager));
 
 app.get('/', (req, res) => {
   res.json({ 
@@ -59,6 +61,7 @@ app.get('/', (req, res) => {
 process.on('SIGINT', () => {
   console.log('\nShutting down gracefully...');
   database.close();
+  databaseManager.close();
   process.exit(0);
 });
 

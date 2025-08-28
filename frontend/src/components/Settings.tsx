@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3, Paperclip, Palette } from 'lucide-react'
+import { Settings as SettingsIcon, X, Plus, Trash2, Save, Edit3, Paperclip, Palette, Database } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useToast } from '../contexts/ToastContext'
 import { useColor } from '../contexts/ColorContext'
+import DatabaseManager from './DatabaseManager'
 
 interface Model {
   id: string
@@ -43,7 +44,7 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
   const [models, setModels] = useState<ModelsData>({ textModels: [], imageModels: [] })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [activeTab, setActiveTab] = useState<'text' | 'image' | 'customization'>('text')
+  const [activeTab, setActiveTab] = useState<'text' | 'image' | 'customization' | 'databases'>('text')
   const [editingModel, setEditingModel] = useState<string | null>(null)
   const [newModel, setNewModel] = useState<Partial<Model>>({
     name: '',
@@ -372,6 +373,17 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
                   {t('settings.image_models')}
                 </button>
                 <button
+                  onClick={() => setActiveTab('databases')}
+                  className={`pb-2 px-1 font-medium transition-colors flex items-center gap-2 ${
+                    activeTab === 'databases'
+                      ? 'border-b-2 border-primary-600 text-primary-600'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  <Database size={16} />
+                  Bancos de Dados
+                </button>
+                <button
                   onClick={() => setActiveTab('customization')}
                   className={`pb-2 px-1 font-medium transition-colors flex items-center gap-2 ${
                     activeTab === 'customization'
@@ -385,10 +397,12 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
               </div>
             </div>
 
-            {loading ? (
+            {loading && activeTab !== 'databases' ? (
               <div className="flex items-center justify-center h-32">
                 <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent"></div>
               </div>
+            ) : activeTab === 'databases' ? (
+              <DatabaseManager />
             ) : activeTab === 'customization' ? (
               <CustomizationTab />
             ) : (
@@ -742,24 +756,26 @@ export default function Settings({ isOpen, onClose }: SettingsProps) {
             )}
           </div>
 
-          <div className="border-t border-gray-200 dark:border-dark-600 p-6">
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={onClose}
-                className="px-6 py-2 border border-gray-300 dark:border-dark-500 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
-              >
-                {t('settings.cancel')}
-              </button>
-              <button
-                onClick={saveModels}
-                disabled={saving}
-                className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                <Save size={16} />
-                {saving ? t('app.saving') : t('app.save_changes')}
-              </button>
+          {activeTab !== 'databases' && activeTab !== 'customization' && (
+            <div className="border-t border-gray-200 dark:border-dark-600 p-6">
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={onClose}
+                  className="px-6 py-2 border border-gray-300 dark:border-dark-500 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-dark-700 transition-colors"
+                >
+                  {t('settings.cancel')}
+                </button>
+                <button
+                  onClick={saveModels}
+                  disabled={saving}
+                  className="flex items-center gap-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <Save size={16} />
+                  {saving ? t('app.saving') : t('app.save_changes')}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

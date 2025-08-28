@@ -3,7 +3,7 @@ const router = express.Router();
 const fs = require('fs');
 const path = require('path');
 
-function createRoutes(database, geminiService, upload) {
+function createRoutes(database, geminiService, upload, databaseManager) {
   
   // Get available models
   router.get('/models', (req, res) => {
@@ -266,6 +266,83 @@ function createRoutes(database, geminiService, upload) {
     } catch (error) {
       console.error('Simple chat error:', error);
       res.status(500).json({ error: 'Failed to process message' });
+    }
+  });
+
+  // Rotas para gerenciar bancos de dados SQLite
+  
+  // Registrar um novo banco de dados
+  router.post('/databases', async (req, res) => {
+    try {
+      const { name, path: dbPath, description } = req.body;
+      
+      if (!name || !dbPath) {
+        return res.status(400).json({ error: 'Nome e caminho são obrigatórios' });
+      }
+
+      const result = await databaseManager.registerDatabase(name, dbPath, description);
+      res.json(result);
+    } catch (error) {
+      console.error('Error registering database:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Listar bancos registrados
+  router.get('/databases', async (req, res) => {
+    try {
+      const databases = await databaseManager.getRegisteredDatabases();
+      res.json(databases);
+    } catch (error) {
+      console.error('Error fetching databases:', error);
+      res.status(500).json({ error: 'Failed to fetch databases' });
+    }
+  });
+
+  // Remover banco registrado
+  router.delete('/databases/:name', async (req, res) => {
+    try {
+      const { name } = req.params;
+      const deleted = await databaseManager.unregisterDatabase(name);
+      
+      if (deleted) {
+        res.json({ success: true, message: 'Database unregistered successfully' });
+      } else {
+        res.status(404).json({ error: 'Database not found' });
+      }
+    } catch (error) {
+      console.error('Error unregistering database:', error);
+      res.status(500).json({ error: 'Failed to unregister database' });
+    }
+  });
+
+  // Obter estrutura de um banco
+  router.get('/databases/:name/schema', async (req, res) => {
+    try {
+      const { name } = req.params;
+      const schema = await databaseManager.getDatabaseSchema(name);
+      res.json(schema);
+    } catch (error) {
+      console.error('Error getting database schema:', error);
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Executar query em um banco
+  router.post('/databases/:name/query', async (req, res) => {
+    try {
+      const { name } = req.params;
+      const { query, params } = req.body;
+      
+      if (!query) {
+        return res.status(400).json({ error: 'Query é obrigatória' });
+      }
+
+      const results = await databaseManager.executeQuery(name, query, params || []);
+      res.json({ results, count: results.length });
+    } catch (error) {
+      console.error('Error executing query:', error);
+      res.status(400).json({ error: error.message });
     }
   });
 
